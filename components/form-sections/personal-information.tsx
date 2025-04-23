@@ -1,60 +1,34 @@
-import { format } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-import { type UseFormReturn } from "react-hook-form";
-import { type z } from "zod";
-import { type formSchema } from "@/lib/form-schema";
-import { COUNTRIES } from "@/lib/constants";
+"use client"
+import type { UseFormReturn } from "react-hook-form"
+import type { z } from "zod"
+import type { formSchema } from "@/lib/form-schema"
+import { COUNTRIES } from "@/lib/constants"
+import { Checkbox } from "@/components/ui/checkbox"
+import { useWatch } from "react-hook-form"
+import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useWatch } from "react-hook-form";
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>
 
 interface PersonalInformationProps {
-  form: UseFormReturn<FormValues>;
+  form: UseFormReturn<FormValues>
 }
 
-export default function PersonalInformation({
-  form,
-}: PersonalInformationProps) {
+export default function PersonalInformation({ form }: PersonalInformationProps) {
   // Watch form values for conditional fields
   const refugeeStatus = useWatch({
     control: form.control,
     name: "refugeeStatus",
-  });
+  })
+
+  console.log("Refugee status:", refugeeStatus)
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700">
-          Personal Information
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Please provide your personal details
-        </p>
+        <h2 className="text-xl font-semibold text-gray-700">Personal Information</h2>
+        <p className="text-sm text-muted-foreground">Please provide your personal details</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -99,33 +73,27 @@ export default function PersonalInformation({
           control={form.control}
           name="dateOfBirth"
           render={({ field }) => {
-            const date = field.value ? new Date(field.value) : null;
-            const selectedDay = date?.getDate().toString();
-            const selectedMonth = (date?.getMonth() ?? 0).toString();
-            const selectedYear = date?.getFullYear().toString();
+            const date = field.value ? new Date(field.value) : null
+            const selectedDay = date?.getDate().toString()
+            const selectedMonth = (date?.getMonth() ?? 0).toString()
+            const selectedYear = date?.getFullYear().toString()
 
-            const handleChange = (
-              type: "day" | "month" | "year",
-              value: string
-            ) => {
-              const d = date ?? new Date();
-              const year = type === "year" ? parseInt(value) : d.getFullYear();
-              const month = type === "month" ? parseInt(value) : d.getMonth();
-              const day = type === "day" ? parseInt(value) : d.getDate();
+            const handleChange = (type: "day" | "month" | "year", value: string) => {
+              const d = date ?? new Date()
+              const year = type === "year" ? Number.parseInt(value) : d.getFullYear()
+              const month = type === "month" ? Number.parseInt(value) : d.getMonth()
+              const day = type === "day" ? Number.parseInt(value) : d.getDate()
 
-              const newDate = new Date(year, month, day);
-              field.onChange(newDate);
-            };
+              const newDate = new Date(year, month, day)
+              field.onChange(newDate)
+            }
 
             return (
               <FormItem>
                 <FormLabel className="text-gray-700">Date of Birth</FormLabel>
                 <div className="grid grid-cols-3 gap-2">
                   {/* Day */}
-                  <Select
-                    value={selectedDay}
-                    onValueChange={(val) => handleChange("day", val)}
-                  >
+                  <Select value={selectedDay} onValueChange={(val) => handleChange("day", val)}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Day" />
@@ -141,10 +109,7 @@ export default function PersonalInformation({
                   </Select>
 
                   {/* Month */}
-                  <Select
-                    value={selectedMonth}
-                    onValueChange={(val) => handleChange("month", val)}
-                  >
+                  <Select value={selectedMonth} onValueChange={(val) => handleChange("month", val)}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Month" />
@@ -162,10 +127,7 @@ export default function PersonalInformation({
                   </Select>
 
                   {/* Year */}
-                  <Select
-                    value={selectedYear}
-                    onValueChange={(val) => handleChange("year", val)}
-                  >
+                  <Select value={selectedYear} onValueChange={(val) => handleChange("year", val)}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Year" />
@@ -173,19 +135,19 @@ export default function PersonalInformation({
                     </FormControl>
                     <SelectContent className="max-h-[200px] overflow-y-scroll">
                       {Array.from({ length: 100 }, (_, i) => {
-                        const year = new Date().getFullYear() - i;
+                        const year = new Date().getFullYear() - i
                         return (
                           <SelectItem key={year} value={year.toString()}>
                             {year}
                           </SelectItem>
-                        );
+                        )
                       })}
                     </SelectContent>
                   </Select>
                 </div>
                 <FormMessage />
               </FormItem>
-            );
+            )
           }}
         />
 
@@ -220,11 +182,7 @@ export default function PersonalInformation({
             <FormItem>
               <FormLabel className="text-gray-700">Phone Number</FormLabel>
               <FormControl>
-                <Input
-                  className="bg-white text-gray-700 border border-gray-300"
-                  placeholder="1234567890"
-                  {...field}
-                />
+                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="1234567890" {...field} />
               </FormControl>
               <FormDescription>Must be exactly 10 digits</FormDescription>
               <FormMessage />
@@ -263,16 +221,11 @@ export default function PersonalInformation({
           render={({ field }) => (
             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-gray-300 p-4">
               <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
+                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
               <div className="space-y-1 leading-none">
                 <FormLabel className="text-gray-700">I am a refugee</FormLabel>
-                <FormDescription>
-                  Check this box if you have refugee status
-                </FormDescription>
+                <FormDescription>Check this box if you have refugee status</FormDescription>
               </div>
             </FormItem>
           )}
@@ -280,6 +233,7 @@ export default function PersonalInformation({
 
         {refugeeStatus ? (
           <FormField
+            key="refugeeId"
             control={form.control}
             name="refugeeId"
             render={({ field }) => (
@@ -289,6 +243,12 @@ export default function PersonalInformation({
                   <Input
                     className="bg-white text-gray-700 border border-gray-300"
                     placeholder="Your refugee ID"
+                    disabled={false}
+                    onChange={(e) => {
+                      console.log("Input value:", e.target.value)
+                      field.onChange(e)
+                    }}
+                    value={field.value || ""}
                     {...field}
                   />
                 </FormControl>
@@ -302,9 +262,7 @@ export default function PersonalInformation({
             name="nationalId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-gray-700">
-                  National ID Number
-                </FormLabel>
+                <FormLabel className="text-gray-700">National ID Number</FormLabel>
                 <FormControl>
                   <Input
                     className="bg-white text-gray-700 border border-gray-300"
@@ -319,5 +277,5 @@ export default function PersonalInformation({
         )}
       </div>
     </div>
-  );
+  )
 }
