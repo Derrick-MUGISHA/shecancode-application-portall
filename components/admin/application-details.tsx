@@ -217,8 +217,24 @@ export default function ApplicationDetails({ application }: { application: any }
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground">Residence</h3>
-                    <p className="text-base">{application.residence}</p>
+                    <h3 className="text-sm font-medium text-muted-foreground">Province</h3>
+                    <p className="text-base">{application.province}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">District</h3>
+                    <p className="text-base">{application.district}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Sector</h3>
+                    <p className="text-base">{application.sector}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Cell</h3>
+                    <p className="text-base">{application.cell}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Village</h3>
+                    <p className="text-base">{application.village}</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -305,6 +321,10 @@ export default function ApplicationDetails({ application }: { application: any }
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">How They Heard About Us</h3>
                     <p className="text-base">{application.howDidYouKnow}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">How They Heard About Us</h3>
+                    <p className="text-base">{application.howDidYouKnowSpecification}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-muted-foreground">Motivation</h3>

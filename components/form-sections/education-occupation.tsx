@@ -40,12 +40,12 @@ export default function EducationOccupation({ form }: EducationOccupationProps) 
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="STUDENT">Student</SelectItem>
                   <SelectItem value="EMPLOYED">Employed</SelectItem>
-                  <SelectItem value="UNEMPLOYED">Unemployed</SelectItem>
-                  <SelectItem value="FREELANCER">Freelancer</SelectItem>
-                  <SelectItem value="ENTREPRENEUR">Entrepreneur</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
+                  <SelectItem value="ATTENDING_UNIVERSITY_NOT_EMPLOYED">Attending University Not Employed</SelectItem>
+                  <SelectItem value="EMPLOYED_ATTENDING_UNIVERSITY">Employed and Attending University</SelectItem>
+                  <SelectItem value="ATTENDING_ADVANCED_TRAINING_AND_UNIVERSITY">Attending advanced training and university</SelectItem>
+                  <SelectItem value="NOT_EMPLOYED_NOT_IN_SCHOOL_NOT_IN_ANY_TRAINING">Not employed, not in school, not in any training</SelectItem>
+                  <SelectItem value="INTERNSHIP">Internship</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

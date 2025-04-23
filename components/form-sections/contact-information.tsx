@@ -22,14 +22,80 @@ export default function ContactInformation({ form }: ContactInformationProps) {
       <div className="grid grid-cols-1 gap-6">
         <FormField
           control={form.control}
-          name="residence"
+          name="province"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-gray-700">Residence</FormLabel>
+              <FormLabel className="text-gray-700">Province</FormLabel>
               <FormControl>
-                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Province, District, Sector, Cell, Village" {...field} />
+                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Province" {...field} />
               </FormControl>
-              <FormDescription>Format: Province, District, Sector, Cell, Village</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+      
+      <div className="grid grid-cols-1 gap-6">
+        <FormField
+          control={form.control}
+          name="district"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-gray-700">District</FormLabel>
+              <FormControl>
+                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="District" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      
+      <div className="grid grid-cols-1 gap-6">
+        <FormField
+          control={form.control}
+          name="sector"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-gray-700">Sector</FormLabel>
+              <FormControl>
+                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Sector" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      
+      <div className="grid grid-cols-1 gap-6">
+        <FormField
+          control={form.control}
+          name="cell"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-gray-700">Cell</FormLabel>
+              <FormControl>
+                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Cell" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      
+      <div className="grid grid-cols-1 gap-6">
+        <FormField
+          control={form.control}
+          name="village"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-gray-700">Village</FormLabel>
+              <FormControl>
+                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Village" {...field} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}

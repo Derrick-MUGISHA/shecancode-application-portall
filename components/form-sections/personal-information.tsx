@@ -1,33 +1,60 @@
-import { format } from "date-fns"
-import { CalendarIcon } from 'lucide-react'
-import { type UseFormReturn } from "react-hook-form"
-import { type z } from "zod"
-import { type formSchema } from "@/lib/form-schema"
-import { COUNTRIES } from "@/lib/constants"
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { type UseFormReturn } from "react-hook-form";
+import { type z } from "zod";
+import { type formSchema } from "@/lib/form-schema";
+import { COUNTRIES } from "@/lib/constants";
 
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Checkbox } from "@/components/ui/checkbox"
-import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useWatch } from "react-hook-form";
+import {
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-type FormValues = z.infer<typeof formSchema>
+type FormValues = z.infer<typeof formSchema>;
 
 interface PersonalInformationProps {
-  form: UseFormReturn<FormValues>
+  form: UseFormReturn<FormValues>;
 }
 
-export default function PersonalInformation({ form }: PersonalInformationProps) {
+export default function PersonalInformation({
+  form,
+}: PersonalInformationProps) {
   // Watch form values for conditional fields
-  const refugeeStatus = form.watch("refugeeStatus")
+  const refugeeStatus = useWatch({
+    control: form.control,
+    name: "refugeeStatus",
+  });
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-700">Personal Information</h2>
-        <p className="text-sm text-muted-foreground">Please provide your personal details</p>
+        <h2 className="text-xl font-semibold text-gray-700">
+          Personal Information
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Please provide your personal details
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -38,7 +65,11 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
             <FormItem>
               <FormLabel className="text-gray-700">Full Name</FormLabel>
               <FormControl>
-                <Input className="bg-white text-gray-700 border border-gray-300 focus:border-[#ECAB88] focus:ring-1 focus:ring-[#ECAB88] focus:outline-none" placeholder="John Doe" {...field} />
+                <Input
+                  className="bg-white text-gray-700 border border-gray-300 focus:border-[#ECAB88] focus:ring-1 focus:ring-[#ECAB88] focus:outline-none"
+                  placeholder="John Doe"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -52,7 +83,12 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
             <FormItem>
               <FormLabel className="text-gray-700">Email</FormLabel>
               <FormControl>
-                <Input className="bg-white text-gray-700 border border-gray-300" type="email" placeholder="john.doe@example.com" {...field} />
+                <Input
+                  className="bg-white text-gray-700 border border-gray-300"
+                  type="email"
+                  placeholder="john.doe@example.com"
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -62,34 +98,95 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
         <FormField
           control={form.control}
           name="dateOfBirth"
-          render={({ field }) => (
-            <FormItem className="flex flex-col mt-2">
-              <FormLabel className="text-gray-700 mb-0.5">Date of Birth</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={"date"}
-                      className="w-full pl-3 text-left font-normal bg-white text-gray-700 border border-gray-300"
-                    >
-                      {field.value ? format(field.value, "PPP") : <span className={`${!field.value ? "text-muted-foreground": ""}`}>Pick a date</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50 text-gray-700" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-white text-gray-700 border border-gray-300" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
+          render={({ field }) => {
+            const date = field.value ? new Date(field.value) : null;
+            const selectedDay = date?.getDate().toString();
+            const selectedMonth = (date?.getMonth() ?? 0).toString();
+            const selectedYear = date?.getFullYear().toString();
+
+            const handleChange = (
+              type: "day" | "month" | "year",
+              value: string
+            ) => {
+              const d = date ?? new Date();
+              const year = type === "year" ? parseInt(value) : d.getFullYear();
+              const month = type === "month" ? parseInt(value) : d.getMonth();
+              const day = type === "day" ? parseInt(value) : d.getDate();
+
+              const newDate = new Date(year, month, day);
+              field.onChange(newDate);
+            };
+
+            return (
+              <FormItem>
+                <FormLabel className="text-gray-700">Date of Birth</FormLabel>
+                <div className="grid grid-cols-3 gap-2">
+                  {/* Day */}
+                  <Select
+                    value={selectedDay}
+                    onValueChange={(val) => handleChange("day", val)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Day" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {[...Array(31)].map((_, i) => (
+                        <SelectItem key={i} value={(i + 1).toString()}>
+                          {i + 1}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Month */}
+                  <Select
+                    value={selectedMonth}
+                    onValueChange={(val) => handleChange("month", val)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Month" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <SelectItem key={i} value={i.toString()}>
+                          {new Date(0, i).toLocaleString("default", {
+                            month: "long",
+                          })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Year */}
+                  <Select
+                    value={selectedYear}
+                    onValueChange={(val) => handleChange("year", val)}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="max-h-[200px] overflow-y-scroll">
+                      {Array.from({ length: 100 }, (_, i) => {
+                        const year = new Date().getFullYear() - i;
+                        return (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
 
         <FormField
@@ -108,7 +205,9 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
                   <SelectItem value="MALE">Male</SelectItem>
                   <SelectItem value="FEMALE">Female</SelectItem>
                   <SelectItem value="OTHER">Other</SelectItem>
-                  <SelectItem value="PREFER_NOT_TO_SAY">Prefer not to say</SelectItem>
+                  <SelectItem value="PREFER_NOT_TO_SAY">
+                    Prefer not to say
+                  </SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -121,9 +220,13 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel  className="text-gray-700">Phone Number</FormLabel>
+              <FormLabel className="text-gray-700">Phone Number</FormLabel>
               <FormControl>
-                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="1234567890" {...field} />
+                <Input
+                  className="bg-white text-gray-700 border border-gray-300"
+                  placeholder="1234567890"
+                  {...field}
+                />
               </FormControl>
               <FormDescription>Must be exactly 10 digits</FormDescription>
               <FormMessage />
@@ -162,11 +265,16 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           render={({ field }) => (
             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-gray-300 p-4">
               <FormControl>
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
               </FormControl>
               <div className="space-y-1 leading-none">
                 <FormLabel className="text-gray-700">I am a refugee</FormLabel>
-                <FormDescription>Check this box if you have refugee status</FormDescription>
+                <FormDescription>
+                  Check this box if you have refugee status
+                </FormDescription>
               </div>
             </FormItem>
           )}
@@ -180,7 +288,11 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
               <FormItem>
                 <FormLabel className="text-gray-700">Refugee ID</FormLabel>
                 <FormControl>
-                  <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Your refugee ID" {...field} />
+                  <Input
+                    className="bg-white text-gray-700 border border-gray-300"
+                    placeholder="Your refugee ID"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -192,9 +304,15 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
             name="nationalId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-gray-700">National ID Number</FormLabel>
+                <FormLabel className="text-gray-700">
+                  National ID Number
+                </FormLabel>
                 <FormControl>
-                  <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Your national ID number" {...field} />
+                  <Input
+                    className="bg-white text-gray-700 border border-gray-300"
+                    placeholder="Your national ID number"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -203,5 +321,5 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
         )}
       </div>
     </div>
-  )
+  );
 }

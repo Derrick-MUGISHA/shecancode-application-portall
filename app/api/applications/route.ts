@@ -31,7 +31,11 @@ export async function POST(request: Request) {
       "gender",
       "phone",
       "nationality",
-      "residence",
+      "province",
+      "district",
+      "sector",
+      "cell",
+      "village",
       "emergencyContactName",
       "emergencyContactRelation",
       "emergencyContactPhone",
@@ -90,7 +94,11 @@ export async function POST(request: Request) {
         disabilityType: body.hasDisability ? body.disabilityType : null,
         disabilityDetails: body.hasDisability ? body.disabilityDetails : null,
 
-        residence: body.residence,
+        province: body.province,
+        district: body.district,
+        sector: body.sector,
+        cell: body.cell,
+        village: body.village,
         emergencyContactName: body.emergencyContactName,
         emergencyContactRelation: body.emergencyContactRelation,
         emergencyContactPhone: body.emergencyContactPhone,
@@ -110,6 +118,7 @@ export async function POST(request: Request) {
         githubProfile: body.githubProfile,
 
         howDidYouKnow: body.howDidYouKnow,
+        howDidYouKnowSpecification: body.howDidYouKnowSpecification,
         motivation: body.motivation,
         additionalFeedback: body.additionalFeedback,
 
