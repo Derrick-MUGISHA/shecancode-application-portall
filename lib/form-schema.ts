@@ -17,7 +17,10 @@ export const formSchema = z.object({
   nationality: z.string().min(2, { message: "Nationality is required." }),
   refugeeStatus: z.boolean().default(false),
   refugeeId: z.string().optional(),
-  nationalId: z.string().optional(),
+  nationalId: z
+    .string()
+    .regex(/^\d{16}$/, { message: "National ID must be exactly 16 digits" })
+    .optional(),
 
   hasDisability: z.boolean().default(false),
   disabilityType: z
