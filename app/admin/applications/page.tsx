@@ -13,7 +13,7 @@ export default function AdminApplicationsPage() {
       <AdminHeader />
       <main className="flex-1 container mx-auto py-8 px-4">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Applications</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-700">Applications</h1>
           <p className="text-muted-foreground">View and manage all applicant applications</p>
         </div>
         <ApplicationList />

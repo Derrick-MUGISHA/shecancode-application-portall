@@ -220,9 +220,9 @@ export default function CourseList() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Course Name</FormLabel>
+                      <FormLabel className="text-gray-700">Course Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Web Development" {...field} />
+                        <Input className="bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300" placeholder="e.g., Web Development" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -233,9 +233,9 @@ export default function CourseList() {
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Description</FormLabel>
+                      <FormLabel className="text-gray-700">Description</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Describe the course..." className="min-h-[100px]" {...field} />
+                        <Textarea className="bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300" placeholder="Describe the course..." className="min-h-[100px]" {...field} />
                       </FormControl>
                       <FormDescription>Provide details about the course content and objectives</FormDescription>
                       <FormMessage />
@@ -271,7 +271,7 @@ export default function CourseList() {
             No courses found. Click &quot;Add Course&quot; to create one.
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -289,12 +289,12 @@ export default function CourseList() {
                     <TableCell>{format(new Date(course.createdAt), "MMM d, yyyy")}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(course)}>
+                        <Button variant="date" size="sm" onClick={() => handleEdit(course)}>
                           <Pencil className="h-4 w-4" />
                           <span className="sr-only">Edit</span>
                         </Button>
                         <Button
-                          variant="outline"
+                          variant="date"
                           size="sm"
                           onClick={() => {
                             setCourseToDelete(course)
@@ -323,7 +323,7 @@ export default function CourseList() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex space-x-2 justify-end">
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button variant="date" className="border border-gray-300 bg-white text-gray-700" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete}>

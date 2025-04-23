@@ -19,7 +19,7 @@ export default async function ApplyPage() {
       </div>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight">Application Form</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-700">Application Form</h1>
           <p className="mt-2 text-muted-foreground">Please fill out the form below to apply for our courses</p>
         </div>
         <ApplicationForm />

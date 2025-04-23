@@ -22,7 +22,7 @@ export default function DisabilityInformation({ form }: DisabilityInformationPro
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Disability Information</h2>
+        <h2 className="text-xl font-semibold text-gray-700">Disability Information</h2>
         <p className="text-sm text-muted-foreground">Please provide information about any disabilities</p>
       </div>
 
@@ -30,12 +30,12 @@ export default function DisabilityInformation({ form }: DisabilityInformationPro
         control={form.control}
         name="hasDisability"
         render={({ field }) => (
-          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-gray-300 p-4">
             <FormControl>
               <Checkbox checked={field.value} onCheckedChange={field.onChange} />
             </FormControl>
             <div className="space-y-1 leading-none">
-              <FormLabel>I have a disability</FormLabel>
+              <FormLabel className="text-gray-700">I have a disability</FormLabel>
               <FormDescription>Check this box if you have any disability</FormDescription>
             </div>
           </FormItem>
@@ -43,7 +43,7 @@ export default function DisabilityInformation({ form }: DisabilityInformationPro
       />
 
       {hasDisability && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> 
           <FormField
             control={form.control}
             name="disabilityType"
@@ -78,11 +78,11 @@ export default function DisabilityInformation({ form }: DisabilityInformationPro
             name="disabilityDetails"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Disability Details</FormLabel>
+                <FormLabel className="text-gray-700">Disability Details</FormLabel>
                 <FormControl>
                   <Textarea
                     placeholder="Please provide details about your disability"
-                    className="resize-none"
+                    className="resize-none bg-white border border-gray-300 text-gray-700"
                     {...field}
                   />
                 </FormControl>

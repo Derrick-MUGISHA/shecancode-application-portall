@@ -23,7 +23,7 @@ export default function CourseSelection({ form, courses }: CourseSelectionProps)
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Course Selection</h2>
+        <h2 className="text-xl font-semibold text-gray-700">Course Selection</h2>
         <p className="text-sm text-muted-foreground">Select the course you want to apply for</p>
       </div>
 
@@ -32,7 +32,7 @@ export default function CourseSelection({ form, courses }: CourseSelectionProps)
         name="courseId"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Course</FormLabel>
+            <FormLabel className="text-gray-700">Course</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
                 <SelectTrigger>

@@ -18,7 +18,7 @@ export default function FamilyEquipment({ form }: FamilyEquipmentProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Family and Equipment</h2>
+        <h2 className="text-xl font-semibold text-gray-700">Family and Equipment</h2>
         <p className="text-sm text-muted-foreground">Information about childcare and equipment</p>
       </div>
 
@@ -27,12 +27,12 @@ export default function FamilyEquipment({ form }: FamilyEquipmentProps) {
           control={form.control}
           name="hasYoungChild"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-gray-300 p-4">
               <FormControl>
                 <Checkbox checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>I have a young child</FormLabel>
+                <FormLabel className="text-gray-700">I have a young child</FormLabel>
                 <FormDescription>Check this box if you have a young child</FormDescription>
               </div>
             </FormItem>
@@ -44,12 +44,12 @@ export default function FamilyEquipment({ form }: FamilyEquipmentProps) {
             control={form.control}
             name="hasChildcareSupport"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-gray-300 p-4">
                 <FormControl>
                   <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                 </FormControl>
                 <div className="space-y-1 leading-none">
-                  <FormLabel>I have childcare support</FormLabel>
+                  <FormLabel className="text-gray-700">I have childcare support</FormLabel>
                   <FormDescription>Check this box if you have childcare support</FormDescription>
                 </div>
               </FormItem>
@@ -61,12 +61,12 @@ export default function FamilyEquipment({ form }: FamilyEquipmentProps) {
           control={form.control}
           name="hasLaptop"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-gray-300 p-4">
               <FormControl>
                 <Checkbox checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>I have a laptop</FormLabel>
+                <FormLabel className="text-gray-700">I have a laptop</FormLabel>
                 <FormDescription>Check this box if you have a laptop for the course</FormDescription>
               </div>
             </FormItem>

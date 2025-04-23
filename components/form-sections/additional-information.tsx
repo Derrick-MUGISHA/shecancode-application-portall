@@ -19,7 +19,7 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Additional Information</h2>
+        <h2 className="text-xl font-semibold text-gray-700">Additional Information</h2>
         <p className="text-sm text-muted-foreground">Please provide additional details about yourself</p>
       </div>
 
@@ -29,9 +29,9 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
           name="linkedInProfile"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>LinkedIn Profile (Optional)</FormLabel>
+              <FormLabel className="text-gray-700">LinkedIn Profile (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="https://linkedin.com/in/username" {...field} />
+                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="https://linkedin.com/in/username" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -43,9 +43,9 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
           name="githubProfile"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>GitHub Profile (Optional)</FormLabel>
+              <FormLabel className="text-gray-700">GitHub Profile (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="https://github.com/username" {...field} />
+                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="https://github.com/username" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -58,7 +58,7 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
         name="howDidYouKnow"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>How did you hear about us?</FormLabel>
+            <FormLabel className="text-gray-700">How did you hear about us?</FormLabel>
             <Select onValueChange={field.onChange} defaultValue={field.value}>
               <FormControl>
                 <SelectTrigger>
@@ -88,11 +88,11 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
         name="motivation"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Motivation</FormLabel>
+            <FormLabel className="bg-white text-gray-700">Motivation</FormLabel>
             <FormControl>
               <Textarea
                 placeholder="Please describe your motivation for applying to this course"
-                className="min-h-[120px]"
+                className="min-h-[120px] bg-white text-gray-700 border border-gray-300"
                 {...field}
               />
             </FormControl>
@@ -109,11 +109,11 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
         name="additionalFeedback"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Additional Feedback (Optional)</FormLabel>
+            <FormLabel className="text-gray-700">Additional Feedback (Optional)</FormLabel>
             <FormControl>
               <Textarea
                 placeholder="Any additional information you'd like to share"
-                className="resize-none"
+                className="resize-none bg-white text-gray-700 border border-gray-300"
                 {...field}
               />
             </FormControl>

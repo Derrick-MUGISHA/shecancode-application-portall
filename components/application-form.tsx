@@ -202,7 +202,7 @@ export default function ApplicationForm() {
 
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardContent className="pt-6 bg-white">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             {/* Course Selection - Moved to top */}

@@ -24,16 +24,16 @@ type Application = {
 }
 
 const statusColors: Record<string, string> = {
-  UNDER_REVIEW: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
-  TECHNICAL_INTERVIEW_SCHEDULED: "bg-blue-100 text-blue-800 hover:bg-blue-200",
-  TECHNICAL_INTERVIEWED: "bg-indigo-100 text-indigo-800 hover:bg-indigo-200",
-  COMMON_INTERVIEW_SCHEDULED: "bg-purple-100 text-purple-800 hover:bg-purple-200",
-  COMMON_INTERVIEWED: "bg-fuchsia-100 text-fuchsia-800 hover:bg-fuchsia-200",
-  ACCEPTED: "bg-green-100 text-green-800 hover:bg-green-200",
-  REJECTED: "bg-red-100 text-red-800 hover:bg-red-200",
-  WAITLISTED: "bg-orange-100 text-orange-800 hover:bg-orange-200",
-  WITHDRAWN: "bg-gray-100 text-gray-800 hover:bg-gray-200",
-  NEEDS_FOLLOW_UP: "bg-pink-100 text-pink-800 hover:bg-pink-200",
+  UNDER_REVIEW: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 py-2 shadow-md border border-gray-200",
+  TECHNICAL_INTERVIEW_SCHEDULED: "bg-blue-100 text-blue-800 hover:bg-blue-200 py-2 shadow-md border border-gray-200",
+  TECHNICAL_INTERVIEWED: "bg-indigo-100 text-indigo-800 hover:bg-indigo-200 py-2 shadow-md border border-gray-200",
+  COMMON_INTERVIEW_SCHEDULED: "bg-purple-100 text-purple-800 hover:bg-purple-200 py-2 shadow-md border border-gray-200",
+  COMMON_INTERVIEWED: "bg-fuchsia-100 text-fuchsia-800 hover:bg-fuchsia-200 py-2 shadow-md border border-gray-200",
+  ACCEPTED: "bg-green-100 text-green-800 hover:bg-green-200 py-2 shadow-md border border-gray-200",
+  REJECTED: "bg-red-100 text-red-800 hover:bg-red-200 py-2 shadow-md border border-gray-200",
+  WAITLISTED: "bg-orange-100 text-orange-800 hover:bg-orange-200 py-2 shadow-md border border-gray-200",
+  WITHDRAWN: "bg-gray-100 text-gray-800 hover:bg-gray-200 py-2 shadow-md border border-gray-200",
+  NEEDS_FOLLOW_UP: "bg-pink-100 text-pink-800 hover:bg-pink-200 py-2 shadow-md border border-gray-200",
 }
 
 export default function ApplicationList() {
@@ -89,10 +89,10 @@ export default function ApplicationList() {
   })
 
   const getStatusBadge = (status: string) => {
-    const colorClass = statusColors[status] || "bg-gray-100 text-gray-800"
+    const colorClass = statusColors[status] || "bg-gray-100 text-gray-700"
 
     return (
-      <Badge className={colorClass} variant="outline">
+      <Badge className={colorClass} variant={'outline'}>
         {status.replace(/_/g, " ")}
       </Badge>
     )
@@ -127,7 +127,7 @@ export default function ApplicationList() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by name or email..."
-              className="pl-8"
+              className="pl-8 bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300 "
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -178,7 +178,7 @@ export default function ApplicationList() {
         ) : filteredApplications.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">No applications found.</div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -200,7 +200,7 @@ export default function ApplicationList() {
                     <TableCell>{format(new Date(application.createdAt), "MMM d, yyyy")}</TableCell>
                     <TableCell className="text-right">
                       <Link href={`/admin/applications/${application.id}`}>
-                        <Button variant="outline" size="sm">
+                        <Button size="sm">
                           View Details
                         </Button>
                       </Link>

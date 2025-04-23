@@ -26,7 +26,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Personal Information</h2>
+        <h2 className="text-xl font-semibold text-gray-700">Personal Information</h2>
         <p className="text-sm text-muted-foreground">Please provide your personal details</p>
       </div>
 
@@ -36,9 +36,9 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           name="fullName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full Name</FormLabel>
+              <FormLabel className="text-gray-700">Full Name</FormLabel>
               <FormControl>
-                <Input placeholder="John Doe" {...field} />
+                <Input className="bg-white text-gray-700 border border-gray-300 focus:border-[#ECAB88] focus:ring-1 focus:ring-[#ECAB88] focus:outline-none" placeholder="John Doe" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -50,9 +50,9 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel className="text-gray-700">Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="john.doe@example.com" {...field} />
+                <Input className="bg-white text-gray-700 border border-gray-300" type="email" placeholder="john.doe@example.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -63,21 +63,21 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           control={form.control}
           name="dateOfBirth"
           render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Date of Birth</FormLabel>
+            <FormItem className="flex flex-col mt-2">
+              <FormLabel className="text-gray-700 mb-0.5">Date of Birth</FormLabel>
               <Popover>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
-                      variant={"outline"}
-                      className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
+                      variant={"date"}
+                      className="w-full pl-3 text-left font-normal bg-white text-gray-700 border border-gray-300"
                     >
-                      {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      {field.value ? format(field.value, "PPP") : <span className={`${!field.value ? "text-muted-foreground": ""}`}>Pick a date</span>}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50 text-gray-700" />
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 bg-white text-gray-700 border border-gray-300" align="start">
                   <Calendar
                     mode="single"
                     selected={field.value}
@@ -97,7 +97,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           name="gender"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Gender</FormLabel>
+              <FormLabel className="text-gray-700">Gender</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -121,9 +121,9 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone Number</FormLabel>
+              <FormLabel  className="text-gray-700">Phone Number</FormLabel>
               <FormControl>
-                <Input placeholder="1234567890" {...field} />
+                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="1234567890" {...field} />
               </FormControl>
               <FormDescription>Must be exactly 10 digits</FormDescription>
               <FormMessage />
@@ -136,7 +136,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           name="nationality"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nationality</FormLabel>
+              <FormLabel className="text-gray-700">Nationality</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -160,12 +160,12 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           control={form.control}
           name="refugeeStatus"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-gray-300 p-4">
               <FormControl>
                 <Checkbox checked={field.value} onCheckedChange={field.onChange} />
               </FormControl>
               <div className="space-y-1 leading-none">
-                <FormLabel>I am a refugee</FormLabel>
+                <FormLabel className="text-gray-700">I am a refugee</FormLabel>
                 <FormDescription>Check this box if you have refugee status</FormDescription>
               </div>
             </FormItem>
@@ -178,9 +178,9 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
             name="refugeeId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Refugee ID</FormLabel>
+                <FormLabel className="text-gray-700">Refugee ID</FormLabel>
                 <FormControl>
-                  <Input placeholder="Your refugee ID" {...field} />
+                  <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Your refugee ID" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -192,9 +192,9 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
             name="nationalId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>National ID Number</FormLabel>
+                <FormLabel className="text-gray-700">National ID Number</FormLabel>
                 <FormControl>
-                  <Input placeholder="Your national ID number" {...field} />
+                  <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Your national ID number" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

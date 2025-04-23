@@ -22,7 +22,7 @@ export default function EducationOccupation({ form }: EducationOccupationProps) 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Education and Occupation</h2>
+        <h2 className="text-xl font-semibold text-gray-700">Education and Occupation</h2>
         <p className="text-sm text-muted-foreground">Information about your education and current occupation</p>
       </div>
 
@@ -58,7 +58,7 @@ export default function EducationOccupation({ form }: EducationOccupationProps) 
           name="educationBackground"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Education Background</FormLabel>
+              <FormLabel className="text-gray-700">Education Background</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
@@ -100,9 +100,9 @@ export default function EducationOccupation({ form }: EducationOccupationProps) 
               name="university"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>University/Institution</FormLabel>
+                  <FormLabel className="text-gray-700">University/Institution</FormLabel>
                   <FormControl>
-                    <Input placeholder="Name of your university/institution" {...field} />
+                    <Input className="bg-white text-gray-700 border border-gray-300" placeholder="Name of your university/institution" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -115,9 +115,9 @@ export default function EducationOccupation({ form }: EducationOccupationProps) 
           name="academicBackground"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Academic Background</FormLabel>
+              <FormLabel className="text-gray-700">Academic Background</FormLabel>
               <FormControl>
-                <Textarea placeholder="Briefly describe your academic background" className="resize-none" {...field} />
+                <Textarea placeholder="Briefly describe your academic background" className="resize-none bg-white text-gray-700 border border-gray-300" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -129,7 +129,7 @@ export default function EducationOccupation({ form }: EducationOccupationProps) 
           name="englishProficiency"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>English Proficiency</FormLabel>
+              <FormLabel className="text-gray-700">English Proficiency</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
