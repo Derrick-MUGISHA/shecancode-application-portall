@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import ApplicationForm from "@/components/application-form"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import SuccessPage from "./success/page"
+import ApplicationDetails from "@/components/admin/application-details"
 
 export const metadata: Metadata = {
   title: "Apply - Applicant Registration System",
@@ -12,7 +14,7 @@ export default async function ApplyPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="mb-6">
-        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-gray-700">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Home
         </Link>

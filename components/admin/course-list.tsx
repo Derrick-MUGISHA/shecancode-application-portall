@@ -189,11 +189,11 @@ export default function CourseList() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
+      <CardHeader className="flex flex-row items-center justify-end">
+        {/* <div>
           <CardTitle>All Courses</CardTitle>
           <CardDescription>Manage courses available for applications</CardDescription>
-        </div>
+        </div> */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -235,7 +235,7 @@ export default function CourseList() {
                     <FormItem>
                       <FormLabel className="text-gray-700">Description</FormLabel>
                       <FormControl>
-                        <Textarea className="bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300" placeholder="Describe the course..." className="min-h-[100px]" {...field} />
+                        <Textarea placeholder="Describe the course..." className="min-h-[100px] placeholder:text-muted-foreground text-gray-700 border border-gray-300" {...field} />
                       </FormControl>
                       <FormDescription>Provide details about the course content and objectives</FormDescription>
                       <FormMessage />
