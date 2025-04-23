@@ -89,7 +89,7 @@ export default function AdminLogin() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email..."
-                className="mt-1 bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300"
+                className="mt-1 bg-white placeholder:bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300"
               />
             </div>
             <div>
@@ -103,7 +103,7 @@ export default function AdminLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password..."
-                className="mt-1 bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300 focus:outline-none"
+                className="mt-1 bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300"
               />
             </div>
           </div>

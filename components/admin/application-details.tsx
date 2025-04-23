@@ -126,7 +126,7 @@ export default function ApplicationDetails({ application }: { application: any }
         <div className="flex items-center space-x-2">
           <Link
             href="/admin/applications"
-            className="flex items-center text-sm text-muted-foreground hover:text-foreground"
+            className="flex items-center text-sm text-muted-foreground hover:text-gray-700"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Applications
@@ -407,15 +407,15 @@ export default function ApplicationDetails({ application }: { application: any }
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button
-                                    variant={"outline"}
-                                    className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
-                                  >
-                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                    variant={"date"}
+                                    className="w-full pl-3 text-left font-normal bg-white text-gray-700 border border-gray-300"
+                                    >
+                                    {field.value ? format(field.value, "PPP") : <span className={`${!field.value ? "text-muted-foreground": ""}`}>Pick a date</span>}
                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0 bg-white text-gray-700 border border-gray-300" align="start">
                                 <Calendar
                                   mode="single"
                                   selected={field.value || undefined}
@@ -440,15 +440,15 @@ export default function ApplicationDetails({ application }: { application: any }
                               <PopoverTrigger asChild>
                                 <FormControl>
                                   <Button
-                                    variant={"outline"}
-                                    className={`w-full pl-3 text-left font-normal ${!field.value ? "text-muted-foreground" : ""}`}
+                                    variant={"date"}
+                                    className="w-full pl-3 text-left font-normal bg-white text-gray-700 border border-gray-300"
                                   >
-                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                    {field.value ? format(field.value, "PPP") : <span className={`${!field.value ? "text-muted-foreground": ""}`}>Pick a date</span>}
                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0 bg-white text-gray-700 border border-gray-300" align="start">
                                 <Calendar
                                   mode="single"
                                   selected={field.value || undefined}
@@ -476,6 +476,7 @@ export default function ApplicationDetails({ application }: { application: any }
                                 max="100"
                                 placeholder="0-100"
                                 value={field.value === null ? "" : field.value}
+                                className="border border-gray-300 placeholder:text-muted-foreground text-gray-700"
                                 onChange={(e) =>
                                   field.onChange(e.target.value === "" ? null : Number.parseFloat(e.target.value))
                                 }
@@ -496,7 +497,7 @@ export default function ApplicationDetails({ application }: { application: any }
                             <FormControl>
                               <Textarea
                                 placeholder="Add your comments about this application"
-                                className="min-h-[120px]"
+                                className="min-h-[120px] bg-white border border-gray-300 placeholder:text-muted-foreground text-gray-700"
                                 {...field}
                               />
                             </FormControl>

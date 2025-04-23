@@ -9,7 +9,7 @@ export default function SuccessPage() {
         <div className="flex justify-center">
           <CheckCircle className="h-16 w-16 text-green-500" />
         </div>
-        <h1 className="text-2xl font-bold">Application Submitted Successfully!</h1>
+        <h1 className="text-2xl font-bold text-gray-700">Application Submitted Successfully!</h1>
         <p className="text-muted-foreground">
           Thank you for submitting your application. We have received your information and will review it shortly. You
           will receive an email notification about the status of your application.
