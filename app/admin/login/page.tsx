@@ -39,7 +39,7 @@ export default function AdminLogin() {
       // Check if user has admin role
       if (
         typeof idToken.claims.email === "string" &&
-        idToken.claims.email.includes("shecancodeschool")
+        idToken.claims.email.includes("igirerwanda")
       ) {
         router.push("/admin/applications");
       } else {
