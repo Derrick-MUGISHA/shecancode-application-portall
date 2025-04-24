@@ -38,12 +38,12 @@ enum EducationBackground {
 }
 
 enum Occupation {
-  STUDENT
   EMPLOYED
-  UNEMPLOYED
-  FREELANCER
-  ENTREPRENEUR
-  OTHER
+  ATTENDING_UNIVERSITY_NOT_EMPLOYED
+  EMPLOYED_ATTENDING_UNIVERSITY
+  ATTENDING_ADVANCED_TRAINING_AND_UNIVERSITY
+  NOT_EMPLOYED_NOT_IN_SCHOOL_NOT_IN_ANY_TRAINING
+  INTERNSHIP
 }
 
 enum DisabilityType {
@@ -97,7 +97,13 @@ model Application {
   disabilityType            DisabilityType?
   disabilityDetails         String?
 
-  residence                 String             // Format: "Province, District, Sector, Cell, Village"
+
+  province                  String
+  district                  String
+  sector                    String
+  cell                      String
+  village                   String
+
   emergencyContactName      String
   emergencyContactRelation  String
   emergencyContactPhone     String
@@ -117,6 +123,7 @@ model Application {
   githubProfile             String?
 
   howDidYouKnow             String
+  howDidYouKnowSpecification String?           // Added specification field
   motivation                String
   additionalFeedback        String?
 

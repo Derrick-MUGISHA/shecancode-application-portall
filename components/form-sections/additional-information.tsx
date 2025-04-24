@@ -1,5 +1,4 @@
 "use client"
-
 import type { UseFormReturn } from "react-hook-form"
 import type { z } from "zod"
 import type { formSchema } from "@/lib/form-schema"
@@ -16,6 +15,37 @@ interface AdditionalInformationProps {
 }
 
 export default function AdditionalInformation({ form }: AdditionalInformationProps) {
+  // Options that require specification
+  const optionsRequiringSpecification = ["FRIENDS", "ALUMNI", "SCHOOL", "SOCIAL_MEDIA", "EVENT", "OTHER"]
+
+  // Get the current value of howDidYouKnow
+  const howDidYouKnow = form.watch("howDidYouKnow")
+
+  // Determine if specification should be shown
+  const showSpecification = optionsRequiringSpecification.includes(howDidYouKnow)
+
+  // Get the appropriate label based on selection
+  const getSpecificationLabel = () => {
+    switch (howDidYouKnow) {
+      case "FRIENDS":
+        return "Friend's name"
+      case "ALUMNI":
+        return "Alumni name/cohort"
+      case "SCHOOL":
+        return "School name"
+      case "SOCIAL_MEDIA":
+        return "Which platform?"
+      case "EVENT":
+        return "Event name"
+      case "OTHER":
+        return "Please specify"
+      default:
+        return ""
+    }
+  }
+
+  const specificationLabel = getSpecificationLabel()
+
   return (
     <div className="space-y-6">
       <div>
@@ -31,7 +61,12 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
             <FormItem>
               <FormLabel className="text-gray-700">LinkedIn Profile (Optional)</FormLabel>
               <FormControl>
-                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="https://linkedin.com/in/username" {...field} />
+                <Input
+                  className="bg-white text-gray-700 border border-gray-300"
+                  placeholder="https://linkedin.com/in/username"
+                  {...field}
+                  value={field.value || ""}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -45,7 +80,12 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
             <FormItem>
               <FormLabel className="text-gray-700">GitHub Profile (Optional)</FormLabel>
               <FormControl>
-                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="https://github.com/username" {...field} />
+                <Input
+                  className="bg-white text-gray-700 border border-gray-300"
+                  placeholder="https://github.com/username"
+                  {...field}
+                  value={field.value || ""}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -53,35 +93,66 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
         />
       </div>
 
-      <FormField
-        control={form.control}
-        name="howDidYouKnow"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="text-gray-700">How did you hear about us?</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select how you heard about us" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="SOCIAL_MEDIA">Social Media</SelectItem>
-                <SelectItem value="FRIENDS">Friends</SelectItem>
-                <SelectItem value="ALUMNI">Alumni</SelectItem>
-                <SelectItem value="WEBSITE">Website</SelectItem>
-                <SelectItem value="SCHOOL">School</SelectItem>
-                <SelectItem value="NEWSPAPER">Newspaper</SelectItem>
-                <SelectItem value="RADIO">Radio</SelectItem>
-                <SelectItem value="TV">TV</SelectItem>
-                <SelectItem value="EVENT">Event</SelectItem>
-                <SelectItem value="OTHER">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
+      <div className="space-y-4">
+        <FormField
+          control={form.control}
+          name="howDidYouKnow"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-gray-700">How did you hear about us?</FormLabel>
+              <Select
+                onValueChange={(value) => {
+                  field.onChange(value)
+                  // Clear the specification field when changing selection
+                  form.setValue("howDidYouKnowSpecification", "")
+                }}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select how you heard about us" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="SOCIAL_MEDIA">Social Media</SelectItem>
+                  <SelectItem value="FRIENDS">Friends</SelectItem>
+                  <SelectItem value="ALUMNI">Alumni</SelectItem>
+                  <SelectItem value="WEBSITE">Website</SelectItem>
+                  <SelectItem value="SCHOOL">School</SelectItem>
+                  <SelectItem value="NEWSPAPER">Newspaper</SelectItem>
+                  <SelectItem value="RADIO">Radio</SelectItem>
+                  <SelectItem value="TV">TV</SelectItem>
+                  <SelectItem value="EVENT">Event</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {/* Conditional specification field - only render when needed */}
+        {showSpecification && (
+          <FormField
+            control={form.control}
+            name="howDidYouKnowSpecification"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-gray-700">{specificationLabel}</FormLabel>
+                <FormControl>
+                  <Input
+                    className="bg-white text-gray-700 border border-gray-300"
+                    placeholder={`Please specify ${specificationLabel.toLowerCase()}`}
+                    {...field}
+                    value={field.value || ""}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
-      />
+      </div>
 
       <FormField
         control={form.control}
@@ -94,6 +165,7 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
                 placeholder="Please describe your motivation for applying to this course"
                 className="min-h-[120px] bg-white text-gray-700 border border-gray-300"
                 {...field}
+                value={field.value || ""}
               />
             </FormControl>
             <FormDescription>
@@ -115,6 +187,7 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
                 placeholder="Any additional information you'd like to share"
                 className="resize-none bg-white text-gray-700 border border-gray-300"
                 {...field}
+                value={field.value || ""}
               />
             </FormControl>
             <FormMessage />
