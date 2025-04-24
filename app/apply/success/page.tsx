@@ -15,7 +15,7 @@ export default function SuccessPage() {
           will receive an email notification about the status of your application.
         </p>
         <div className="pt-4">
-          <Link href="/">
+          <Link href="https://www.shecancodeschool.org/">
             <Button>Return to Home</Button>
           </Link>
         </div>

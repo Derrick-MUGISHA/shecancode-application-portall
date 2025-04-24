@@ -6,7 +6,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <header className="shadow-sm">
         <div className="container mx-auto py-2 px-4 flex justify-between items-center">
-          <img src="/logo.png" alt="logo" width={100} height={20} />
+          <Link href="https://www.shecancodeschool.org/"><img src="/logo.png" alt="logo" width={100} height={20} /></Link>
           <h1 className="hidden md:block text-2xl font-bold text-gray-700">
             Applicant Registration System
           </h1>

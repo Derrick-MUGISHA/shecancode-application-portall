@@ -14,7 +14,7 @@ export default async function ApplyPage() {
   return (
     <div className="container mx-auto py-8 px-4">
       <div className="mb-6">
-        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-gray-700">
+        <Link href="https://www.shecancodeschool.org/" className="inline-flex items-center text-sm text-muted-foreground hover:text-gray-700">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Home
         </Link>
