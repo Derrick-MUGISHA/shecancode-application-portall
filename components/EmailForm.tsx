@@ -39,7 +39,12 @@ export default function EmailForm({
   const router = useRouter()
   const form = useForm<EmailFormValues>({
     resolver: zodResolver(EmailSchema),
-    defaultValues,
+    defaultValues: {
+      subject: defaultValues.subject || "",
+      body: defaultValues.body || "",
+      courseId: defaultValues.courseId || "",
+      invitationDate: defaultValues.invitationDate || "",
+    },
   })
 
   const editorConfig = useMemo(
@@ -116,7 +121,7 @@ export default function EmailForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Course</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} value={field.value}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a course" />
@@ -141,7 +146,7 @@ export default function EmailForm({
             <FormItem>
               <FormLabel>Invitation Date (Optional)</FormLabel>
               <FormControl>
-                <Input type="date" {...field} />
+                <Input type="date" {...field} value={field.value || ""} />
               </FormControl>
               <FormMessage />
             </FormItem>
