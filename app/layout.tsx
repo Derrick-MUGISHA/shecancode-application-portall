@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
+import "./globals.css"; import { Toaster } from "sonner";
+import TanstackProvider from "@/lib/TanstackProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,18 +21,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className= {`bg-white ${inter.className}`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+      <body className={`bg-white ${inter.className}`}>
+        <TanstackProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster richColors />
+          </ThemeProvider>
+        </TanstackProvider>
       </body>
     </html>
   );
 }
 
-import "./globals.css";

@@ -72,70 +72,81 @@ enum ApplicationStatus {
 }
 
 model Course {
-  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   applications Application[]
+  Email        Email[]
 }
 
 model Application {
-  id                        String             @id @default(auto()) @map("_id") @db.ObjectId
-  fullName                  String
-  email                     String             @unique
-  dateOfBirth               DateTime
-  gender                    Gender
-  phone                     String
-  nationality               String
-  refugeeStatus             Boolean
-  refugeeId                 String?
-  nationalId                String?            // Added national ID field
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  fullName      String
+  email         String   @unique
+  dateOfBirth   DateTime
+  gender        Gender
+  phone         String
+  nationality   String
+  refugeeStatus Boolean
+  refugeeId     String?
+  nationalId    String? // Added national ID field
 
-  hasDisability             Boolean
-  disabilityType            DisabilityType?
-  disabilityDetails         String?
+  hasDisability     Boolean
+  disabilityType    DisabilityType?
+  disabilityDetails String?
 
+  province String
+  district String
+  sector   String
+  cell     String
+  village  String
 
-  province                  String
-  district                  String
-  sector                    String
-  cell                      String
-  village                   String
+  emergencyContactName     String
+  emergencyContactRelation String
+  emergencyContactPhone    String
 
-  emergencyContactName      String
-  emergencyContactRelation  String
-  emergencyContactPhone     String
+  hasYoungChild       Boolean
+  hasChildcareSupport Boolean?
 
-  hasYoungChild             Boolean
-  hasChildcareSupport       Boolean?
+  hasLaptop         Boolean
+  currentOccupation Occupation
 
-  hasLaptop                 Boolean
-  currentOccupation         Occupation
+  educationBackground EducationBackground
+  university          String?
+  academicBackground  String
+  englishProficiency  EnglishProficiency
 
-  educationBackground       EducationBackground
-  university                String?
-  academicBackground        String
-  englishProficiency        EnglishProficiency
+  linkedInProfile String?
+  githubProfile   String?
 
-  linkedInProfile           String?
-  githubProfile             String?
+  howDidYouKnow              String
+  howDidYouKnowSpecification String? // Added specification field
+  motivation                 String
+  additionalFeedback         String?
 
-  howDidYouKnow             String
-  howDidYouKnowSpecification String?           // Added specification field
-  motivation                String
-  additionalFeedback        String?
+  status                  ApplicationStatus @default(UNDER_REVIEW)
+  reviewerComments        String?
+  interviewDate           DateTime?
+  decisionDate            DateTime?
+  technicalInterviewMarks Float?
 
-  status                    ApplicationStatus  @default(UNDER_REVIEW)
-  reviewerComments          String?
-  interviewDate             DateTime?
-  decisionDate              DateTime?
-  technicalInterviewMarks   Float?
+  courseId String @db.ObjectId
+  course   Course @relation(fields: [courseId], references: [id])
 
-  courseId                  String             @db.ObjectId
-  course                    Course             @relation(fields: [courseId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
-  createdAt                 DateTime           @default(now())
-  updatedAt                 DateTime           @updatedAt
+model Email {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  subject        String
+  body           String
+  courseId       String    @db.ObjectId
+  course         Course    @relation(fields: [courseId], references: [id])
+  invitationDate DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
