@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     description: "Add new emails",
 }
 
-export default async function AdminEmailsPage() {
+export default async function page() {
     const breadCrumLinks: BreadCrumLinkTypes[] = [
         { label: 'Emails', link: '/admin/emails', position: 'middle' },
         { label: 'Add New', link: '', position: 'end' },
@@ -29,7 +29,7 @@ export default async function AdminEmailsPage() {
                         <Link className="underline" href={"/admin/emails"}>Go Back to Emails</Link>
                     </div>
                     <p className="text-muted-foreground pt-2">Create a new email for applicants</p>
-                    <EmailForm courses={courses} onSubmit={createEmail} submitButtonText="Create Email" />
+                    {courses && <EmailForm courses={courses} onSubmit={createEmail} submitButtonText="Create Email" />}
                 </div>
             </main>
         </div>

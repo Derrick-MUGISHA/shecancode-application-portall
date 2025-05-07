@@ -5,7 +5,6 @@ import prisma from "@/lib/prisma"
 import { Toaster } from "@/components/ui/toaster"
 import EmailDetails from "@/components/EmailDetails"
 import BreadcrumbWithCustomSeparator, { BreadCrumLinkTypes } from "@/components/BreadcrumbWithCustomSeparator"
-import { BreadcrumbSeparator } from "@/components/ui/breadcrumb"
 
 export const metadata: Metadata = {
   title: "Email Details",
