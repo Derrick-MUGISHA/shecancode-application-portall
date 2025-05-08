@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
+import dynamic from "next/dynamic"
 import AdminHeader from "@/components/admin/admin-header"
-import BreadcrumbWithCustomSeparator, { BreadCrumLinkTypes } from "@/components/BreadcrumbWithCustomSeparator";
-import Link from "next/link";
-import EmailForm from "@/components/EmailForm";
-import { createEmail, getCourses } from "@/lib/actions";
+import BreadcrumbWithCustomSeparator, { BreadCrumLinkTypes } from "@/components/BreadcrumbWithCustomSeparator"
+import Link from "next/link"
+import { createEmail, getCourses } from "@/lib/actions"
+import EmailForm from "@/components/EmailForm"
 
 export const metadata: Metadata = {
     title: "Admin - Create New Email",

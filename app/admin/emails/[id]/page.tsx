@@ -28,7 +28,7 @@ const breadCrumLinks: BreadCrumLinkTypes[] = [
 ];
 
 export default async function EmailDetailsPage({ params }: { params: { id: string } }) {
-  const { id } = params
+  const { id } = await params
 
   try {
     const email = await getEmail(id)
