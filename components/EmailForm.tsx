@@ -12,6 +12,10 @@ import { useRouter } from "next/navigation"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import JoditEditor from "jodit-react"
 import { useMemo } from "react"
+import dynamic from "next/dynamic"
+const QuillEditor = dynamic(() => import("react-quill"), { ssr: false })
+import "react-quill/dist/quill.snow.css"
+import RichTextEditor from "./RichTextEditor"
 
 const EmailSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
@@ -102,6 +106,29 @@ export default function EmailForm({
                   control={form.control}
                   name="body"
                   render={({ field: { onChange, value } }) => (
+                    <RichTextEditor
+                      value={value || ""}
+                      onChange={onChange}
+                      placeholder="Enter email body..."
+                    />
+                  )}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {/* <FormField
+          control={form.control}
+          name="body"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Body</FormLabel>
+              <FormControl>
+                <Controller
+                  control={form.control}
+                  name="body"
+                  render={({ field: { onChange, value } }) => (
                     <JoditEditor
                       value={value || ""}
                       config={editorConfig}
@@ -114,7 +141,19 @@ export default function EmailForm({
               <FormMessage />
             </FormItem>
           )}
-        />
+        /> */}
+        {/* <Controller
+          control={form.control}
+          name="body"
+          render={({ field: { onChange, value } }) => (
+            <QuillEditor
+              value={value || ""}
+              onChange={onChange}
+              placeholder="Enter email body..."
+              modules={{ toolbar: true }}
+            />
+          )}
+        /> */}
         <FormField
           control={form.control}
           name="courseId"
