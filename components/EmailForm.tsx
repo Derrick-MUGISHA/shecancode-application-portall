@@ -10,12 +10,16 @@ import { useToast } from "@/hooks/use-toast"
 import { Course } from "@prisma/client"
 import { useRouter } from "next/navigation"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import JoditEditor from "jodit-react"
 import { useMemo } from "react"
 import dynamic from "next/dynamic"
-const QuillEditor = dynamic(() => import("react-quill"), { ssr: false })
-import "react-quill/dist/quill.snow.css"
+// const QuillEditor = dynamic(() => import("react-quill"), { ssr: false })
+// import "react-quill/dist/quill.snow.css"
 import RichTextEditor from "./RichTextEditor"
+const JoditEditor = dynamic(() => import("jodit-react"), { ssr: false });
+// const RichTextEditor = dynamic(() => import("./RichTextEditor"), {
+//   ssr: false,
+//   loading: () => <p>Loading editor...</p>,
+// })
 
 const EmailSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
@@ -95,7 +99,7 @@ export default function EmailForm({
             </FormItem>
           )}
         />
-        <FormField
+        {/* <FormField
           control={form.control}
           name="body"
           render={({ field }) => (
@@ -117,8 +121,8 @@ export default function EmailForm({
               <FormMessage />
             </FormItem>
           )}
-        />
-        {/* <FormField
+        /> */}
+        <FormField
           control={form.control}
           name="body"
           render={({ field }) => (
@@ -141,19 +145,7 @@ export default function EmailForm({
               <FormMessage />
             </FormItem>
           )}
-        /> */}
-        {/* <Controller
-          control={form.control}
-          name="body"
-          render={({ field: { onChange, value } }) => (
-            <QuillEditor
-              value={value || ""}
-              onChange={onChange}
-              placeholder="Enter email body..."
-              modules={{ toolbar: true }}
-            />
-          )}
-        /> */}
+        />
         <FormField
           control={form.control}
           name="courseId"
