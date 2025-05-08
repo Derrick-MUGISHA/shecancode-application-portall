@@ -1,3 +1,5 @@
+// "use client"
+
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import AdminHeader from "@/components/admin/admin-header"
