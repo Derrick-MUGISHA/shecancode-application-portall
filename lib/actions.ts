@@ -86,6 +86,7 @@ export async function updateApplication(id: string, formData: FormData) {
       await transporter.sendMail({
         from: process.env.EMAIL_ADDRESS,
         to: application.email,
+        cc: process.env.CC_EMAIL_ADDRESS,
         subject: emailContent.subject,
         html: emailContent.body,
       })
