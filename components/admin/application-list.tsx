@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import {useEffect, useState} from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { Loader2, Search } from "lucide-react"
+import {Download, Loader2, Search} from "lucide-react"
 import { fetchApplications } from "@/lib/actions"
+import * as xlsx from "xlsx";
+import {generateDownloadExcel} from "@/lib/utils";
 
 type Application = {
   id: string
@@ -253,6 +255,10 @@ export default function ApplicationList({
                   </SelectContent>
                 </Select>
               </div>
+              <Button onClick={() => generateDownloadExcel(filteredApplications, statusFilter)}>
+                <Download />
+                <span>Export to Excel</span>
+              </Button>
             </div>
           </div>
 
