@@ -6,6 +6,7 @@ import prisma from "@/lib/prisma"
 import { Toaster } from "@/components/ui/toaster"
 import EmailsTable from "@/components/EmailsTable"
 import { getCourses, getEmails } from "@/lib/actions"
+import AdminProtectedRoute from "@/components/AdminProtectedRoute"
 
 export const metadata: Metadata = {
   title: "Admin - Emails",
@@ -21,6 +22,7 @@ export default async function AdminEmailsPage() {
   const courses = await getCourses();
 
   return (
+    <AdminProtectedRoute>
     <div className="min-h-screen flex flex-col">
       <AdminHeader />
       <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} />
@@ -37,6 +39,7 @@ export default async function AdminEmailsPage() {
         <EmailsTable emails={emails} courses={courses} />
         <Toaster />
       </main>
-    </div>
+      </div>
+      </AdminProtectedRoute>
   )
 }

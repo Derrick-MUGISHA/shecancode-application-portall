@@ -3,6 +3,7 @@ import ApplicationList from "@/components/admin/application-list"
 import AdminHeader from "@/components/admin/admin-header"
 import { fetchApplications } from "@/lib/actions"
 import BreadcrumbWithCustomSeparator, { BreadCrumLinkTypes } from "@/components/BreadcrumbWithCustomSeparator"
+import AdminProtectedRoute from "@/components/AdminProtectedRoute"
 
 export const metadata: Metadata = {
   title: "Admin - Applications",
@@ -17,6 +18,7 @@ export default async function AdminApplicationsPage() {
   const initialData = await fetchApplications();
 
   return (
+    <AdminProtectedRoute>
     <div className="min-h-screen flex flex-col">
       <AdminHeader />
       <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} />
@@ -27,6 +29,7 @@ export default async function AdminApplicationsPage() {
         </div> */}
         <ApplicationList initialData={initialData} />
       </main>
-    </div>
+      </div>
+      </AdminProtectedRoute>
   )
 }
