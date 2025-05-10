@@ -32,7 +32,7 @@ export default function RootLayout({
             {children}
             <Toaster richColors />
           </ThemeProvider>
-        </TanstackProvider>
+          </TanstackProvider>
       </body>
     </html>
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import CourseList from "@/components/admin/course-list"
 import AdminHeader from "@/components/admin/admin-header"
+import AdminProtectedRoute from "@/components/AdminProtectedRoute"
 
 export const metadata: Metadata = {
   title: "Admin - Courses",
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 
 export default function AdminCoursesPage() {
   return (
+    <AdminProtectedRoute>
     <div className="min-h-screen flex flex-col">
       <AdminHeader />
       <main className="flex-1 container mx-auto py-8 px-4">
@@ -18,6 +20,7 @@ export default function AdminCoursesPage() {
         </div>
         <CourseList />
       </main>
-    </div>
+      </div>
+      </AdminProtectedRoute>
   )
 }

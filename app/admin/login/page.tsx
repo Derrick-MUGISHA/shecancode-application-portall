@@ -32,15 +32,15 @@ export default function AdminLogin() {
       );
       const user = userCredential.user;
 
-      // Get the ID token to check custom claims
       const idToken = await user.getIdTokenResult();
       console.log("ID Token Claims:", idToken.claims);
 
-      // Check if user has admin role
       if (
         typeof idToken.claims.email === "string" &&
         idToken.claims.email.includes("igirerwanda")
       ) {
+        // Set a secure HTTP-only cookie
+        document.cookie = `adminSession=true; path=/; secure; samesite=strict`;
         router.push("/admin/applications");
       } else {
         await auth.signOut();

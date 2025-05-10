@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Home, Users, BookOpen, Mail } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePathname } from "next/navigation"
-import ModeToggle from "../ModeToggle"
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
 
 export default function AdminHeader() {
   const pathname = usePathname()
@@ -16,6 +17,19 @@ export default function AdminHeader() {
     { href: "/admin/courses", label: "Courses", icon: BookOpen },
     { href: "/admin/emails", label: "Emails", icon: Mail },
   ]
+
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      // Clear the cookie
+      document.cookie = "adminSession=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT";
+      router.push("/admin/login");
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
 
   return (
     <header className="bg-white shadow-sm">
@@ -51,7 +65,9 @@ export default function AdminHeader() {
               ))}
             </ul>
           </nav>
-          <ModeToggle />
+          <Button variant="outline" onClick={handleLogout}>
+          Logout
+        </Button>
         </div>
       </div>
     </header>
