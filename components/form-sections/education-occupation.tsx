@@ -58,7 +58,7 @@ export default function EducationOccupation({ form }: EducationOccupationProps) 
           name="educationBackground"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-gray-700">Highest Education Level</FormLabel>
+              <FormLabel className="text-gray-700">Education Level</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
                   <SelectTrigger>
