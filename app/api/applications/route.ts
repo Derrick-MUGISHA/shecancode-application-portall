@@ -43,13 +43,15 @@ export async function POST(request: Request) {
       "educationBackground",
       "academicBackground",
       "englishProficiency",
+      "englishSkillConfidence",
+      "canPayRegistrationFee",
       "howDidYouKnow",
       "motivation",
       "courseId",
     ]
 
     for (const field of requiredFields) {
-      if (!body[field]) {
+      if (body[field] === undefined || body[field] === null) {
         console.log(`Missing required field: ${field}`)
         return NextResponse.json({ message: `${field} is required` }, { status: 400 })
       }
@@ -113,6 +115,8 @@ export async function POST(request: Request) {
         university: body.university,
         academicBackground: body.academicBackground,
         englishProficiency: body.englishProficiency,
+        englishSkillConfidence: body.englishSkillConfidence,
+        canPayRegistrationFee: body.canPayRegistrationFee,
 
         linkedInProfile: body.linkedInProfile,
         githubProfile: body.githubProfile,

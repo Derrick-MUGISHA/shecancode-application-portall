@@ -1,6 +1,6 @@
 "use client"
 
-import { Application, Course } from "@prisma/client"
+import type { Application, Course } from "@prisma/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { format } from "date-fns"
 
@@ -168,6 +168,14 @@ export default function ApplicantInfo({ application }: ApplicantInfoProps) {
             <div>
               <h3 className="text-sm font-medium text-muted-foreground">English Proficiency</h3>
               <p className="text-base">{application.englishProficiency}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Most Confident English Skill</h3>
+              <p className="text-base">{application.englishSkillConfidence}</p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-muted-foreground">Can Pay Registration Fee</h3>
+              <p className="text-base">{application.canPayRegistrationFee ? "Yes" : "No"}</p>
             </div>
           </div>
           <div>

@@ -23,6 +23,13 @@ enum EnglishProficiency {
   NATIVE
 }
 
+enum EnglishSkillConfidence {
+  READING
+  WRITING
+  SPEAKING
+  LISTENING
+}
+
 enum EducationBackground {
   HIGH_SCHOOL
   TECHNICAL_SCHOOL
@@ -114,10 +121,12 @@ model Application {
   hasLaptop         Boolean
   currentOccupation Occupation
 
-  educationBackground EducationBackground
-  university          String?
-  academicBackground  String
-  englishProficiency  EnglishProficiency
+  educationBackground    EducationBackground
+  university             String?
+  academicBackground     String
+  englishProficiency     EnglishProficiency
+  englishSkillConfidence EnglishSkillConfidence? // New field for English skill confidence
+  canPayRegistrationFee  Boolean? // New field for registration fee payment ability
 
   linkedInProfile String?
   githubProfile   String?
