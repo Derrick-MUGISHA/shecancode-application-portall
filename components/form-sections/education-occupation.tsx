@@ -193,7 +193,7 @@ export default function EducationOccupation({ form }: EducationOccupationProps) 
         render={({ field }) => (
           <FormItem className="space-y-3">
             <FormLabel className="text-gray-700">
-              Can you pay the registration fee as specified on the SheCanCode website?
+              Are you willing to pay the registration fee as specified on the SheCanCode website?
             </FormLabel>
             <FormControl>
               <RadioGroup
