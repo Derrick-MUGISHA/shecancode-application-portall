@@ -89,8 +89,6 @@ export async function POST(request: Request) {
         phone: body.phone,
         nationality: body.nationality,
         refugeeStatus: body.refugeeStatus,
-        refugeeId: body.refugeeId,
-        nationalId: body.nationalId,
 
         hasDisability: body.hasDisability,
         disabilityType: body.hasDisability ? body.disabilityType : null,

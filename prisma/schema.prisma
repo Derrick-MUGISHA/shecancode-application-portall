@@ -98,8 +98,6 @@ model Application {
   phone         String
   nationality   String
   refugeeStatus Boolean
-  refugeeId     String?
-  nationalId    String? // Added national ID field
 
   hasDisability     Boolean
   disabilityType    DisabilityType?

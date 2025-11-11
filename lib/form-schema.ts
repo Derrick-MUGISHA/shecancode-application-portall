@@ -6,18 +6,12 @@ export const formSchema = z.object({
   dateOfBirth: z.date({
     required_error: "Date of birth is required.",
   }),
-  gender: z.enum(["MALE", "FEMALE", "OTHER", "PREFER_NOT_TO_SAY"], {
+  gender: z.enum(["MALE", "FEMALE",], {
     required_error: "Please select a gender.",
   }),
   phone: z.string().length(10, { message: "Phone number must be exactly 10 digits." }),
   nationality: z.string().min(2, { message: "Nationality is required." }),
   refugeeStatus: z.boolean().default(false),
-  refugeeId: z.string().optional(),
-  nationalId: z
-    .string()
-    .regex(/^\d{16}$/, { message: "National ID must be exactly 16 digits" })
-    .optional(),
-
   hasDisability: z.boolean().default(false),
   disabilityType: z
     .enum([
@@ -95,7 +89,7 @@ export const formSchema = z.object({
   githubProfile: z.string().url({ message: "Please enter a valid GitHub URL." }).optional().or(z.literal("")),
 
   howDidYouKnow: z.enum(
-    ["SOCIAL_MEDIA", "FRIENDS", "ALUMNI", "WEBSITE", "SCHOOL", "NEWSPAPER", "RADIO", "TV", "EVENT", "OTHER"],
+    ["SOCIAL_MEDIA", "SHE_CAN_CODE_AMBASSADOR","FRIENDS", "ALUMNI", "WEBSITE", "SCHOOL", "NEWSPAPER", "RADIO", "TV", "EVENT", "OTHER"],
     {
       required_error: "Please select how you heard about us.",
     },

@@ -2,7 +2,6 @@
 import type { UseFormReturn } from "react-hook-form"
 import type { z } from "zod"
 import type { formSchema } from "@/lib/form-schema"
-
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -15,32 +14,19 @@ interface AdditionalInformationProps {
 }
 
 export default function AdditionalInformation({ form }: AdditionalInformationProps) {
-  // Options that require specification
   const optionsRequiringSpecification = ["FRIENDS", "ALUMNI", "SCHOOL", "SOCIAL_MEDIA", "EVENT", "OTHER"]
-
-  // Get the current value of howDidYouKnow
   const howDidYouKnow = form.watch("howDidYouKnow")
-
-  // Determine if specification should be shown
   const showSpecification = optionsRequiringSpecification.includes(howDidYouKnow)
 
-  // Get the appropriate label based on selection
   const getSpecificationLabel = () => {
     switch (howDidYouKnow) {
-      case "FRIENDS":
-        return "Friend's name"
-      case "ALUMNI":
-        return "Alumni name/cohort"
-      case "SCHOOL":
-        return "School name"
-      case "SOCIAL_MEDIA":
-        return "Which platform?"
-      case "EVENT":
-        return "Event name"
-      case "OTHER":
-        return "Please specify"
-      default:
-        return ""
+      case "FRIENDS": return "Friend's name"
+      case "ALUMNI": return "Alumni name/cohort"
+      case "SCHOOL": return "School name"
+      case "SOCIAL_MEDIA": return "Which platform?"
+      case "EVENT": return "Event name"
+      case "OTHER": return "Please specify"
+      default: return ""
     }
   }
 
@@ -103,7 +89,6 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
               <Select
                 onValueChange={(value) => {
                   field.onChange(value)
-                  // Clear the specification field when changing selection
                   form.setValue("howDidYouKnowSpecification", "")
                 }}
                 defaultValue={field.value}
@@ -124,6 +109,7 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
                   <SelectItem value="TV">TV</SelectItem>
                   <SelectItem value="EVENT">Event</SelectItem>
                   <SelectItem value="OTHER">Other</SelectItem>
+                  <SelectItem value="SHE_CAN_CODE_AMBASSADOR">SheCanCODE Ambassador</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -131,7 +117,6 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
           )}
         />
 
-        {/* Conditional specification field - only render when needed */}
         {showSpecification && (
           <FormField
             control={form.control}
@@ -154,6 +139,7 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
         )}
       </div>
 
+      {/* Motivation */}
       <FormField
         control={form.control}
         name="motivation"

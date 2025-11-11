@@ -20,8 +20,6 @@ export function generateDownloadExcel(applications, statusFilter) {
     Village: app.village,
     Nationality: app.nationality,
     "Refugee Status": app.refugeeStatus ? "Yes" : "No",
-    "Refugee ID": app.refugeeId,
-    "National ID": app.nationalId,
     "Has Disability": app.hasDisability ? "Yes" : "No",
     "Disability Type": app.disabilityType,
     "Disability Details": app.disabilityDetails,

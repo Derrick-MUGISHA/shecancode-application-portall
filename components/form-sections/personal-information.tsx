@@ -5,7 +5,14 @@ import type { formSchema } from "@/lib/form-schema"
 import { COUNTRIES } from "@/lib/constants"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useWatch } from "react-hook-form"
-import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import {
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -16,13 +23,17 @@ interface PersonalInformationProps {
 }
 
 export default function PersonalInformation({ form }: PersonalInformationProps) {
-  // Watch form values for conditional fields
+  // Watch gender to display warning for male participants
+  const selectedGender = useWatch({
+    control: form.control,
+    name: "gender",
+  })
+
+  // Watch refugee status (optional)
   const refugeeStatus = useWatch({
     control: form.control,
     name: "refugeeStatus",
   })
-
-  console.log("Refugee status:", refugeeStatus)
 
   return (
     <div className="space-y-6">
@@ -32,6 +43,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Full Name */}
         <FormField
           control={form.control}
           name="fullName"
@@ -50,6 +62,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           )}
         />
 
+        {/* Email */}
         <FormField
           control={form.control}
           name="email"
@@ -69,6 +82,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           )}
         />
 
+        {/* Date of Birth */}
         <FormField
           control={form.control}
           name="dateOfBirth"
@@ -83,7 +97,6 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
               const year = type === "year" ? Number.parseInt(value) : d.getFullYear()
               const month = type === "month" ? Number.parseInt(value) : d.getMonth()
               const day = type === "day" ? Number.parseInt(value) : d.getDate()
-
               const newDate = new Date(year, month, day)
               field.onChange(newDate)
             }
@@ -118,9 +131,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
                     <SelectContent>
                       {Array.from({ length: 12 }, (_, i) => (
                         <SelectItem key={i} value={i.toString()}>
-                          {new Date(0, i).toLocaleString("default", {
-                            month: "long",
-                          })}
+                          {new Date(0, i).toLocaleString("default", { month: "long" })}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -151,6 +162,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           }}
         />
 
+        {/* Gender */}
         <FormField
           control={form.control}
           name="gender"
@@ -166,15 +178,21 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
                 <SelectContent>
                   <SelectItem value="MALE">Male</SelectItem>
                   <SelectItem value="FEMALE">Female</SelectItem>
-                  {/* <SelectItem value="OTHER">Other</SelectItem>
-                  <SelectItem value="PREFER_NOT_TO_SAY">Prefer not to say</SelectItem> */}
                 </SelectContent>
               </Select>
               <FormMessage />
+
+              {/* Male warning */}
+              {selectedGender === "MALE" && (
+                <p className="mt-2 text-sm text-red-600 font-medium">
+                  ⚠️ Note: Our program primarily sponsors women 100%. Male participants only pay 50% participation fee.
+                </p>
+              )}
             </FormItem>
           )}
         />
 
+        {/* Phone */}
         <FormField
           control={form.control}
           name="phone"
@@ -190,6 +208,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           )}
         />
 
+        {/* Nationality */}
         <FormField
           control={form.control}
           name="nationality"
@@ -215,6 +234,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           )}
         />
 
+        {/* Refugee Status */}
         <FormField
           control={form.control}
           name="refugeeStatus"
@@ -230,51 +250,6 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
             </FormItem>
           )}
         />
-
-        {refugeeStatus ? (
-          <FormField
-            key="refugeeId"
-            control={form.control}
-            name="refugeeId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-gray-700">Refugee ID</FormLabel>
-                <FormControl>
-                  <Input
-                    className="bg-white text-gray-700 border border-gray-300"
-                    placeholder="Your refugee ID"
-                    disabled={false}
-                    onChange={(e) => {
-                      console.log("Input value:", e.target.value)
-                      field.onChange(e)
-                    }}
-                    value={field.value || ""}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <FormField
-            control={form.control}
-            name="nationalId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-gray-700">National ID Number</FormLabel>
-                <FormControl>
-                  <Input
-                    className="bg-white text-gray-700 border border-gray-300"
-                    placeholder="Your national ID number"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
       </div>
     </div>
   )

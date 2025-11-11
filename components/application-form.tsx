@@ -83,7 +83,6 @@ export default function ApplicationForm() {
       motivation: "",
       linkedInProfile: "",
       githubProfile: "",
-      nationalId: "",
     },
   })
 

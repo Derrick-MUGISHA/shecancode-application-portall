@@ -45,12 +45,6 @@ export default function ApplicantInfo({ application }: ApplicantInfoProps) {
               <h3 className="text-sm font-medium text-muted-foreground">Refugee Status</h3>
               <p className="text-base">{application.refugeeStatus ? "Yes" : "No"}</p>
             </div>
-            {application.refugeeStatus && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Refugee ID</h3>
-                <p className="text-base">{application.refugeeId}</p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
