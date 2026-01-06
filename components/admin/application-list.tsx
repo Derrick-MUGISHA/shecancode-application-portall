@@ -76,6 +76,13 @@ export default function ApplicationList({
     )
   }
 
+  const applicantsByCourse = applications.reduce((acc, app) => {
+    const courseName = app.course?.name ?? "No course assigned";
+    acc[courseName] = (acc[courseName] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+
   // Filter applications based on search term and filters
   const filteredApplications = applications.filter((app) => {
     const matchesSearch =

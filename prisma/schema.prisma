@@ -140,8 +140,8 @@ model Application {
   decisionDate            DateTime?
   technicalInterviewMarks Float?
 
-  courseId String @db.ObjectId
-  course   Course @relation(fields: [courseId], references: [id])
+  courseId String? @db.ObjectId
+  course   Course? @relation(fields: [courseId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -151,8 +151,8 @@ model Email {
   id             String    @id @default(auto()) @map("_id") @db.ObjectId
   subject        String
   body           String
-  courseId       String    @db.ObjectId
-  course         Course    @relation(fields: [courseId], references: [id])
+  courseId String? @db.ObjectId
+  course   Course? @relation(fields: [courseId], references: [id])
   invitationDate DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt

@@ -237,7 +237,7 @@ export async function fetchApplications() {
 
     // Applicants by course
     const applicantsByCourse = applications.reduce((acc, app) => {
-      const courseName = app.course.name
+      const courseName = app.course?.name || "unknown"
       acc[courseName] = (acc[courseName] || 0) + 1
       return acc
     }, {} as Record<string, number>)
