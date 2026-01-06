@@ -244,17 +244,18 @@ export async function fetchApplications() {
 
     // Applicants by status and course
     const applicantsByStatusAndCourse = applications.reduce((acc, app) => {
-      const key = `${app.status}__${app.course.name}`
+      const courseName = app.course?.name || "Unknown";
+      const key = `${app.status}__${courseName}`
       acc[key] = (acc[key] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 
     // Unique courses for filtering
-    const uniqueCourses = Array.from(new Set(applications.map((app) => app.course.id))).map((courseId) => {
-      const app = applications.find((a) => a.course.id === courseId)
+    const uniqueCourses = Array.from(new Set(applications.map((app) => app.course?.id || "unknown"))).map((courseId) => {
+      const app = applications.find((a) => (a.course?.id || "unknown") === courseId)
       return {
         id: courseId,
-        name: app!.course.name,
+        name: app.course?.name || "Unknown",
       }
     })
 

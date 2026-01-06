@@ -76,13 +76,6 @@ export default function ApplicationList({
     )
   }
 
-  const applicantsByCourse = applications.reduce((acc, app) => {
-    const courseName = app.course?.name ?? "No course assigned";
-    acc[courseName] = (acc[courseName] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
-
   // Filter applications based on search term and filters
   const filteredApplications = applications.filter((app) => {
     const matchesSearch =
@@ -293,7 +286,7 @@ export default function ApplicationList({
                     <TableRow key={application.id}>
                       <TableCell className="font-medium">{application.fullName}</TableCell>
                       <TableCell>{application.email}</TableCell>
-                      <TableCell>{application.course.name}</TableCell>
+                      <TableCell>{application.course?.name || "Unknown"}</TableCell>
                       <TableCell>{getStatusBadge(application.status)}</TableCell>
                       <TableCell>{format(new Date(application.createdAt), "MMM d, yyyy")}</TableCell>
                       <TableCell className="text-right">
