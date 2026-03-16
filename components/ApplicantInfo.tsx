@@ -167,10 +167,10 @@ export default function ApplicantInfo({ application }: ApplicantInfoProps) {
               <h3 className="text-sm font-medium text-muted-foreground">Most Confident English Skill</h3>
               <p className="text-base">{application.englishSkillConfidence}</p>
             </div>
-            <div>
+            {/* <div>
               <h3 className="text-sm font-medium text-muted-foreground">Can Pay Registration Fee</h3>
               <p className="text-base">{application.canPayRegistrationFee ? "Yes" : "No"}</p>
-            </div>
+            </div> */}
           </div>
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">Academic Background</h3>

@@ -187,34 +187,7 @@ export default function EducationOccupation({ form }: EducationOccupationProps) 
         />
       </div>
 
-      <FormField
-        control={form.control}
-        name="canPayRegistrationFee"
-        render={({ field }) => (
-          <FormItem className="space-y-3">
-            <FormLabel className="text-gray-700">
-              Are you willing to pay the registration fee as specified on the SheCanCode website?
-            </FormLabel>
-            <FormControl>
-              <RadioGroup
-                onValueChange={(value) => field.onChange(value === "true")}
-                value={field.value?.toString()}
-                className="flex flex-col space-y-1"
-              >
-                <div className="flex items-center space-x-3 space-y-0">
-                  <RadioGroupItem value="true" />
-                  <FormLabel className="font-normal">Yes, I can pay the registration fee</FormLabel>
-                </div>
-                <div className="flex items-center space-x-3 space-y-0">
-                  <RadioGroupItem value="false" />
-                  <FormLabel className="font-normal">No, I cannot pay the registration fee</FormLabel>
-                </div>
-              </RadioGroup>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+
     </div>
   )
 }

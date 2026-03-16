@@ -81,9 +81,10 @@ export const formSchema = z.object({
   englishSkillConfidence: z.enum(["READING", "WRITING", "SPEAKING", "LISTENING"], {
     required_error: "Please select your most confident English skill.",
   }),
-  canPayRegistrationFee: z.boolean({
-    required_error: "Please indicate if you can pay the registration fee.",
-  }),
+  //removed the registration fee question for now, can add it back later if needed
+  // canPayRegistrationFee: z.boolean({
+  //   required_error: "Please indicate if you can pay the registration fee.",
+  // }),
 
   linkedInProfile: z.string().url({ message: "Please enter a valid LinkedIn URL." }).optional().or(z.literal("")),
   githubProfile: z.string().url({ message: "Please enter a valid GitHub URL." }).optional().or(z.literal("")),

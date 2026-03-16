@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       "academicBackground",
       "englishProficiency",
       "englishSkillConfidence",
-      "canPayRegistrationFee",
+      // "canPayRegistrationFee",
       "howDidYouKnow",
       "motivation",
       "courseId",
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         academicBackground: body.academicBackground,
         englishProficiency: body.englishProficiency,
         englishSkillConfidence: body.englishSkillConfidence,
-        canPayRegistrationFee: body.canPayRegistrationFee,
+        // canPayRegistrationFee: body.canPayRegistrationFee,
 
         linkedInProfile: body.linkedInProfile,
         githubProfile: body.githubProfile,

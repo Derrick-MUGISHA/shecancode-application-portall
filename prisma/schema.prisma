@@ -124,7 +124,7 @@ model Application {
   academicBackground     String
   englishProficiency     EnglishProficiency
   englishSkillConfidence EnglishSkillConfidence? // New field for English skill confidence
-  canPayRegistrationFee  Boolean? // New field for registration fee payment ability
+  // canPayRegistrationFee  Boolean? // New field for registration fee payment ability
 
   linkedInProfile String?
   githubProfile   String?
