@@ -92,7 +92,7 @@ export default function ApplicationList({
   const [statusFilter, setStatusFilter] = useState<string>(initialFilters.status)
   const [courseFilter, setCourseFilter] = useState<string>(initialFilters.course)
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([])
-  const [bulkStatus, setBulkStatus] = useState<string>(initialFilters.status === "ALL" ? "" : initialFilters.status)
+  const [bulkStatus, setBulkStatus] = useState<string>("")
   const { toast } = useToast()
 
   const listHref = useMemo(() => {
@@ -130,6 +130,10 @@ export default function ApplicationList({
   const selectedVisibleCount = selectedApplicationIds.filter((id) => filteredApplicationIds.includes(id)).length
   const allVisibleSelected =
     filteredApplicationIds.length > 0 && selectedVisibleCount === filteredApplicationIds.length
+  const hasSelection = selectedApplicationIds.length > 0
+  const selectedNeedingChange = applications.filter(
+    (application) => selectedApplicationIds.includes(application.id) && application.status !== bulkStatus
+  ).length
 
   useEffect(() => {
     window.history.replaceState(null, "", listHref)
@@ -189,6 +193,7 @@ export default function ApplicationList({
         )
       )
       setSelectedApplicationIds([])
+      setBulkStatus("")
       await handleRefresh()
     }
 
@@ -316,11 +321,8 @@ export default function ApplicationList({
                 />
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="w-full sm:w-[170px]">
-                  <Select value={statusFilter} onValueChange={(value) => {
-                    setStatusFilter(value)
-                    if (value !== "ALL") setBulkStatus(value)
-                  }}>
+                <div className="w-full sm:w-[180px]">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by status" />
                     </SelectTrigger>
@@ -334,7 +336,7 @@ export default function ApplicationList({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="w-full sm:w-[170px]">
+                <div className="w-full sm:w-[180px]">
                   <Select value={courseFilter} onValueChange={setCourseFilter}>
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by course" />
@@ -349,10 +351,22 @@ export default function ApplicationList({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="w-full sm:w-[200px]">
+                <Button onClick={() => generateDownloadExcel(filteredApplications, statusFilter)}>
+                  <Download />
+                  <span>Export to Excel</span>
+                </Button>
+              </div>
+            </div>
+
+            {hasSelection ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="text-sm font-medium text-gray-700">
+                  {selectedApplicationIds.length} selected
+                </div>
+                <div className="w-full sm:w-[220px]">
                   <Select value={bulkStatus} onValueChange={setBulkStatus}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select new status" />
+                      <SelectValue placeholder="Change status to..." />
                     </SelectTrigger>
                     <SelectContent>
                       {applicationStatuses.map((status) => (
@@ -365,7 +379,7 @@ export default function ApplicationList({
                 </div>
                 <Button
                   onClick={handleBulkStatusUpdate}
-                  disabled={selectedApplicationIds.length === 0 || !bulkStatus || isBulkUpdating}
+                  disabled={!bulkStatus || selectedNeedingChange === 0 || isBulkUpdating}
                 >
                   {isBulkUpdating ? (
                     <>
@@ -376,16 +390,23 @@ export default function ApplicationList({
                     "Update Selected"
                   )}
                 </Button>
-                <Button onClick={() => generateDownloadExcel(filteredApplications, statusFilter)}>
-                  <Download />
-                  <span>Export to Excel</span>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setSelectedApplicationIds([])
+                    setBulkStatus("")
+                  }}
+                  disabled={isBulkUpdating}
+                >
+                  Clear
                 </Button>
               </div>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {selectedApplicationIds.length} selected
-              {filteredApplications.length > 0 ? ` from ${filteredApplications.length} filtered applications` : ""}
-            </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                {filteredApplications.length} application{filteredApplications.length === 1 ? "" : "s"}
+                {" \u00b7 select rows to update their status in bulk"}
+              </div>
+            )}
           </div>
 
           {loading ? (
