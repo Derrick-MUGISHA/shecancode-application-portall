@@ -92,13 +92,18 @@ export default function ApplicationReviewForm({ application, emails }: Applicati
         if (value instanceof Date) {
           formData.append(key, value.toISOString())
         }
-      } else if (key === "modifiedEmail" && value) {
-        if (value.subject) formData.append("modifiedEmail.subject", value.subject)
-        if (value.body) formData.append("modifiedEmail.body", value.body)
+      } else if (key === "modifiedEmail") {
+        return
       } else if (value !== undefined && value !== null) {
         formData.append(key, value.toString())
       }
     })
+    if (data.modifiedEmail?.subject) {
+      formData.append("modifiedEmail.subject", data.modifiedEmail.subject)
+    }
+    if (data.modifiedEmail?.body) {
+      formData.append("modifiedEmail.body", data.modifiedEmail.body)
+    }
 
     const result = await updateApplication(application.id, formData)
 

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { format } from "date-fns"
 
 interface ApplicantInfoProps {
-  application: Application & { course: Course }
+  application: Application & { course: Course | null }
 }
 
 export default function ApplicantInfo({ application }: ApplicantInfoProps) {
@@ -186,7 +186,7 @@ export default function ApplicantInfo({ application }: ApplicantInfoProps) {
         <CardContent className="space-y-4">
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">Selected Course</h3>
-            <p className="text-base">{application.course.name}</p>
+            <p className="text-base">{application.course?.name || "Unknown"}</p>
           </div>
           <div>
             <h3 className="text-sm font-medium text-muted-foreground">How They Heard About Us</h3>

@@ -7,7 +7,7 @@ import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 
 interface ApplicationSummaryProps {
-  application: Application & { course: Course }
+  application: Application & { course: Course | null }
 }
 
 const statusColors: Record<string, string> = {
@@ -45,7 +45,7 @@ export default function ApplicationSummary({ application }: ApplicationSummaryPr
         </div>
         <div>
           <h3 className="text-sm font-medium text-muted-foreground">Course</h3>
-          <p className="text-base">{application.course.name}</p>
+          <p className="text-base">{application.course?.name || "Unknown"}</p>
         </div>
         <div>
           <h3 className="text-sm font-medium text-muted-foreground">Status</h3>

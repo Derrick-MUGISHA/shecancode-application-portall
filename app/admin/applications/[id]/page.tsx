@@ -16,7 +16,7 @@ const breadCrumLinks: BreadCrumLinkTypes[] = [
   { label: 'Details', link: '', position: 'end' },
 ];
 
-export default async function ApplicationDetailsPage({ params }: { params: { id: string }}) {
+export default async function ApplicationDetailsPage({ params }: { params: Promise<{ id: string }>}) {
   const { id } = await params;
   const emails = await getEmails();
 

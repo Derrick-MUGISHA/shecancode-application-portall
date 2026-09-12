@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Application, Course, Email } from "@prisma/client"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
@@ -9,16 +10,25 @@ import ApplicationReviewForm from "../ApplicationReviewForm"
 import ApplicationSummary from "../ApplicationSummary"
 
 interface ApplicationDetailsProps {
-  application: Application & { course: Course }
+  application: Application & { course: Course | null }
   emails: Email[]
 }
 
 export default function ApplicationDetails({ application, emails }: ApplicationDetailsProps) {
+  const [backHref, setBackHref] = useState("/admin/applications")
+
+  useEffect(() => {
+    const from = new URLSearchParams(window.location.search).get("from")
+    if (from?.startsWith("/admin/applications")) {
+      setBackHref(from)
+    }
+  }, [])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Link
-          href="/admin/applications"
+          href={backHref}
           className="flex items-center text-sm text-muted-foreground hover:text-gray-700"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />

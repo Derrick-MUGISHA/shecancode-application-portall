@@ -14,8 +14,23 @@ const breadCrumLinks: BreadCrumLinkTypes[] = [
   { label: "Applications", link: "/admin/applications", position: "end" },
 ]
 
-export default async function AdminApplicationsPage() {
+type AdminApplicationsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+const getSearchParam = (params: Record<string, string | string[] | undefined>, key: string) => {
+  const value = params[key]
+  return Array.isArray(value) ? value[0] || "" : value || ""
+}
+
+export default async function AdminApplicationsPage({ searchParams }: AdminApplicationsPageProps) {
   const initialData = await fetchApplications();
+  const params = searchParams ? await searchParams : {}
+  const initialFilters = {
+    search: getSearchParam(params, "search"),
+    status: getSearchParam(params, "status") || "ALL",
+    course: getSearchParam(params, "course") || "ALL",
+  }
 
   return (
     <AdminProtectedRoute>
@@ -27,7 +42,7 @@ export default async function AdminApplicationsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-gray-700">Applications</h1>
           <p className="text-muted-foreground pt-2">View and manage all applicant applications</p>
         </div> */}
-        <ApplicationList initialData={initialData} />
+        <ApplicationList initialData={initialData} initialFilters={initialFilters} />
       </main>
       </div>
       </AdminProtectedRoute>

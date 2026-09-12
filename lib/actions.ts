@@ -78,7 +78,7 @@ export async function updateApplication(id: string, formData: FormData) {
       })
 
       if (!email) {
-        return { success: false, message: "Selected email not found" }
+        return { success: false as const, message: "Selected email not found" }
       }
 
       const emailContent = data.modifiedEmail || email
@@ -94,13 +94,44 @@ export async function updateApplication(id: string, formData: FormData) {
 
     revalidatePath("/admin/applications")
     revalidatePath(`/admin/applications/${id}`)
-    return { success: true, message: "Application updated successfully" }
+    return { success: true as const, message: "Application updated successfully" }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { success: false, message: "Validation failed", errors: error.errors }
+      return { success: false as const, message: "Validation failed", errors: error.errors }
     }
     console.error("Error updating application:", error)
-    return { success: false, message: "Failed to update application" }
+    return { success: false as const, message: "Failed to update application" }
+  }
+}
+
+const BulkApplicationStatusSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+  status: ApplicationSchema.shape.status,
+})
+
+export async function updateApplicationStatuses(ids: string[], status: string) {
+  try {
+    const data = BulkApplicationStatusSchema.parse({ ids, status })
+
+    await prisma.application.updateMany({
+      where: {
+        id: {
+          in: data.ids,
+        },
+      },
+      data: {
+        status: data.status,
+      },
+    })
+
+    revalidatePath("/admin/applications")
+    return { success: true as const, message: "Selected applications updated successfully" }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false as const, message: "Validation failed", errors: error.errors }
+    }
+    console.error("Error updating selected applications:", error)
+    return { success: false as const, message: "Failed to update selected applications" }
   }
 }
 
@@ -193,6 +224,7 @@ export async function getEmails() {
     })
   } catch (error) {
     console.log("Error fetching emails", error);
+    return []
   }
 }
 
@@ -255,12 +287,12 @@ export async function fetchApplications() {
       const app = applications.find((a) => (a.course?.id || "unknown") === courseId)
       return {
         id: courseId,
-        name: app.course?.name || "Unknown",
+        name: app?.course?.name || "Unknown",
       }
     })
 
     return {
-      success: true,
+      success: true as const,
       applications,
       statistics: {
         totalApplicants,
@@ -272,6 +304,6 @@ export async function fetchApplications() {
     }
   } catch (error) {
     console.error("Error fetching applications:", error)
-    return { success: false, message: "Failed to fetch applications" }
+    return { success: false as const, message: "Failed to fetch applications" }
   }
 }
