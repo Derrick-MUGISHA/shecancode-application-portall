@@ -35,7 +35,7 @@ export default function BreadcrumbWithCustomSeparator({ breadCrumLinks }: Breadc
       <BreadcrumbList className="container mx-auto py-2 px-4 flex items-center justify-start w-full">
         {/* Start Link (Dashboard) */}
         <BreadcrumbItem>
-          <BreadcrumbLink>
+          <BreadcrumbLink asChild>
             <Link className="hover:text-black" href={startLink.link}>{startLink.label}</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
@@ -47,7 +47,7 @@ export default function BreadcrumbWithCustomSeparator({ breadCrumLinks }: Breadc
             {middleLinks.map((link, index) => (
               <div key={index} className="flex items-center pl-2 gap-2">
                 <BreadcrumbItem>
-                  <BreadcrumbLink>
+                  <BreadcrumbLink asChild>
                     <Link href={link.link}>{link.label}</Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
