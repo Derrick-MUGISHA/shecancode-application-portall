@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useState} from "react"
+import {useEffect, useMemo, useState} from "react"
 import Link from "next/link"
 import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -9,21 +9,22 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import {Download, Loader2, Search} from "lucide-react"
-import { fetchApplications } from "@/lib/actions"
-import * as xlsx from "xlsx";
+import { fetchApplications, updateApplicationStatuses } from "@/lib/actions"
 import {generateDownloadExcel} from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast"
 
 type Application = {
   id: string
   fullName: string
   email: string
   status: string
-  createdAt: string
+  createdAt: string | Date
   course: {
     id: string
     name: string
-  }
+  } | null
 }
 
 type Course = {
@@ -39,6 +40,10 @@ type Statistics = {
   courses: Course[]
 }
 
+type ApplicationsResult =
+  | { success: true; applications: Application[]; statistics: Statistics }
+  | { success: false; message: string }
+
 const statusColors: Record<string, string> = {
   UNDER_REVIEW: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 py-2 shadow-md border border-gray-200",
   TECHNICAL_INTERVIEW_SCHEDULED: "bg-blue-100 text-blue-800 hover:bg-blue-200 py-2 shadow-md border border-gray-200",
@@ -52,20 +57,52 @@ const statusColors: Record<string, string> = {
   NEEDS_FOLLOW_UP: "bg-pink-100 text-pink-800 hover:bg-pink-200 py-2 shadow-md border border-gray-200",
 }
 
+const applicationStatuses = [
+  { value: "UNDER_REVIEW", label: "Under Review" },
+  { value: "TECHNICAL_INTERVIEW_SCHEDULED", label: "Technical Interview Scheduled" },
+  { value: "TECHNICAL_INTERVIEWED", label: "Technical Interviewed" },
+  { value: "COMMON_INTERVIEW_SCHEDULED", label: "Common Interview Scheduled" },
+  { value: "COMMON_INTERVIEWED", label: "Common Interviewed" },
+  { value: "ACCEPTED", label: "Accepted" },
+  { value: "REJECTED", label: "Rejected" },
+  { value: "WAITLISTED", label: "Waitlisted" },
+  { value: "WITHDRAWN", label: "Withdrawn" },
+  { value: "NEEDS_FOLLOW_UP", label: "Needs Follow-up" },
+]
+
 export default function ApplicationList({
   initialData,
+  initialFilters,
 }: {
-  initialData: { applications: Application[]; statistics: Statistics } | { success: false; message: string }
+  initialData: ApplicationsResult
+  initialFilters: {
+    search: string
+    status: string
+    course: string
+  }
 }) {
   const [applications, setApplications] = useState<Application[]>(initialData.success ? initialData.applications : [])
   const [statistics, setStatistics] = useState<Statistics | null>(
     initialData.success ? initialData.statistics : null
   )
   const [loading, setLoading] = useState(false)
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false)
   const [error, setError] = useState<string | null>(initialData.success ? null : initialData.message)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("ALL")
-  const [courseFilter, setCourseFilter] = useState<string>("ALL")
+  const [searchTerm, setSearchTerm] = useState(initialFilters.search)
+  const [statusFilter, setStatusFilter] = useState<string>(initialFilters.status)
+  const [courseFilter, setCourseFilter] = useState<string>(initialFilters.course)
+  const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([])
+  const [bulkStatus, setBulkStatus] = useState<string>(initialFilters.status === "ALL" ? "" : initialFilters.status)
+  const { toast } = useToast()
+
+  const listHref = useMemo(() => {
+    const params = new URLSearchParams()
+    if (searchTerm.trim()) params.set("search", searchTerm.trim())
+    if (statusFilter !== "ALL") params.set("status", statusFilter)
+    if (courseFilter !== "ALL") params.set("course", courseFilter)
+    const query = params.toString()
+    return query ? `/admin/applications?${query}` : "/admin/applications"
+  }, [courseFilter, searchTerm, statusFilter])
 
   const getStatusBadge = (status: string) => {
     const colorClass = statusColors[status] || "bg-gray-100 text-gray-700"
@@ -82,9 +119,40 @@ export default function ApplicationList({
       app.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       app.email.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "ALL" || app.status === statusFilter
-    const matchesCourse = courseFilter === "ALL" || app.course.id === courseFilter
+    const matchesCourse = courseFilter === "ALL" || app.course?.id === courseFilter
     return matchesSearch && matchesStatus && matchesCourse
   })
+
+  const filteredApplicationIds = useMemo(
+    () => filteredApplications.map((application) => application.id),
+    [filteredApplications]
+  )
+  const selectedVisibleCount = selectedApplicationIds.filter((id) => filteredApplicationIds.includes(id)).length
+  const allVisibleSelected =
+    filteredApplicationIds.length > 0 && selectedVisibleCount === filteredApplicationIds.length
+
+  useEffect(() => {
+    window.history.replaceState(null, "", listHref)
+  }, [listHref])
+
+  useEffect(() => {
+    setSelectedApplicationIds((current) => current.filter((id) => applications.some((app) => app.id === id)))
+  }, [applications])
+
+  const toggleApplicationSelection = (applicationId: string, checked: boolean) => {
+    setSelectedApplicationIds((current) =>
+      checked ? Array.from(new Set([...current, applicationId])) : current.filter((id) => id !== applicationId)
+    )
+  }
+
+  const toggleAllVisibleApplications = (checked: boolean) => {
+    setSelectedApplicationIds((current) => {
+      if (!checked) {
+        return current.filter((id) => !filteredApplicationIds.includes(id))
+      }
+      return Array.from(new Set([...current, ...filteredApplicationIds]))
+    })
+  }
 
   // Refresh data on demand
   const handleRefresh = async () => {
@@ -98,6 +166,33 @@ export default function ApplicationList({
       setError(result.message)
     }
     setLoading(false)
+  }
+
+  const handleBulkStatusUpdate = async () => {
+    if (selectedApplicationIds.length === 0 || !bulkStatus) return
+
+    setIsBulkUpdating(true)
+    const result = await updateApplicationStatuses(selectedApplicationIds, bulkStatus)
+
+    toast({
+      title: result.success ? "Success" : "Error",
+      description: result.message,
+      variant: result.success ? "default" : "destructive",
+    })
+
+    if (result.success) {
+      setApplications((current) =>
+        current.map((application) =>
+          selectedApplicationIds.includes(application.id)
+            ? { ...application, status: bulkStatus }
+            : application
+        )
+      )
+      setSelectedApplicationIds([])
+      await handleRefresh()
+    }
+
+    setIsBulkUpdating(false)
   }
 
   if (error) {
@@ -209,56 +304,87 @@ export default function ApplicationList({
       {/* Application List */}
       <Card>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6 pt-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or email..."
-                className="pl-8 bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="mb-6 flex flex-col gap-3 pt-4">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  className="pl-8 bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="w-full sm:w-[170px]">
+                  <Select value={statusFilter} onValueChange={(value) => {
+                    setStatusFilter(value)
+                    if (value !== "ALL") setBulkStatus(value)
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Statuses</SelectItem>
+                      {applicationStatuses.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-[170px]">
+                  <Select value={courseFilter} onValueChange={setCourseFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by course" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Courses</SelectItem>
+                      {statistics?.courses.map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          {course.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-full sm:w-[200px]">
+                  <Select value={bulkStatus} onValueChange={setBulkStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select new status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {applicationStatuses.map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={handleBulkStatusUpdate}
+                  disabled={selectedApplicationIds.length === 0 || !bulkStatus || isBulkUpdating}
+                >
+                  {isBulkUpdating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    "Update Selected"
+                  )}
+                </Button>
+                <Button onClick={() => generateDownloadExcel(filteredApplications, statusFilter)}>
+                  <Download />
+                  <span>Export to Excel</span>
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <div className="w-[180px]">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Statuses</SelectItem>
-                    <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
-                    <SelectItem value="TECHNICAL_INTERVIEW_SCHEDULED">Technical Interview Scheduled</SelectItem>
-                    <SelectItem value="TECHNICAL_INTERVIEWED">Technical Interviewed</SelectItem>
-                    <SelectItem value="COMMON_INTERVIEW_SCHEDULED">Common Interview Scheduled</SelectItem>
-                    <SelectItem value="COMMON_INTERVIEWED">Common Interviewed</SelectItem>
-                    <SelectItem value="ACCEPTED">Accepted</SelectItem>
-                    <SelectItem value="REJECTED">Rejected</SelectItem>
-                    <SelectItem value="WAITLISTED">Waitlisted</SelectItem>
-                    <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
-                    <SelectItem value="NEEDS_FOLLOW_UP">Needs Follow-up</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-[180px]">
-                <Select value={courseFilter} onValueChange={setCourseFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by course" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Courses</SelectItem>
-                    {statistics?.courses.map((course) => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={() => generateDownloadExcel(filteredApplications, statusFilter)}>
-                <Download />
-                <span>Export to Excel</span>
-              </Button>
+            <div className="text-sm text-muted-foreground">
+              {selectedApplicationIds.length} selected
+              {filteredApplications.length > 0 ? ` from ${filteredApplications.length} filtered applications` : ""}
             </div>
           </div>
 
@@ -273,6 +399,13 @@ export default function ApplicationList({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[48px]">
+                      <Checkbox
+                        checked={allVisibleSelected}
+                        onCheckedChange={(checked) => toggleAllVisibleApplications(checked === true)}
+                        aria-label="Select all filtered applications"
+                      />
+                    </TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Course</TableHead>
@@ -283,14 +416,21 @@ export default function ApplicationList({
                 </TableHeader>
                 <TableBody>
                   {filteredApplications.map((application) => (
-                    <TableRow key={application.id}>
+                    <TableRow key={application.id} data-state={selectedApplicationIds.includes(application.id) && "selected"}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedApplicationIds.includes(application.id)}
+                          onCheckedChange={(checked) => toggleApplicationSelection(application.id, checked === true)}
+                          aria-label={`Select ${application.fullName}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{application.fullName}</TableCell>
                       <TableCell>{application.email}</TableCell>
                       <TableCell>{application.course?.name || "Unknown"}</TableCell>
                       <TableCell>{getStatusBadge(application.status)}</TableCell>
                       <TableCell>{format(new Date(application.createdAt), "MMM d, yyyy")}</TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/admin/applications/${application.id}`}>
+                        <Link href={`/admin/applications/${application.id}?from=${encodeURIComponent(listHref)}`}>
                           <Button size="sm">View Details</Button>
                         </Link>
                       </TableCell>
