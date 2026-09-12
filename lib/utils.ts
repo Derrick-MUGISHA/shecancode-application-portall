@@ -47,7 +47,7 @@ export function generateDownloadExcel(applications, statusFilter) {
     "Interview Date": app.interviewDate ? new Date(app.interviewDate) : null,
     "Decision Date": app.decisionDate ? new Date(app.decisionDate) : null,
     "Technical Interview Marks": app.technicalInterviewMarks,
-    "Course Name": app.course.name,
+    "Course Name": app.course?.name ?? "",
   }))
 
   const ws = xlsx.utils.json_to_sheet(excelData)
