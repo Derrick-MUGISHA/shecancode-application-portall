@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { FileText, Upload, X } from "lucide-react"
-import type { UseFormReturn } from "react-hook-form"
+import { useWatch, type UseFormReturn } from "react-hook-form"
 import type { z } from "zod"
 import type { formSchema } from "@/lib/form-schema"
 import { EDUCATION_DOCUMENT_ACCEPT, validateEducationFile } from "@/lib/education-document"
@@ -14,6 +14,11 @@ export default function EducationAttachmentField({ form, optional }: { form: Use
   const selection = useRef(0)
   const [checking, setChecking] = useState(false)
   const [selectionMessage, setSelectionMessage] = useState("")
+  const attachment = useWatch({ control: form.control, name: "educationDocument" })
+  useEffect(() => {
+    if (!input.current || !attachment) return
+    try { const transfer = new DataTransfer(); transfer.items.add(attachment); input.current.files = transfer.files } catch { /* The selected-file row still shows a restored attachment in browsers without DataTransfer. */ }
+  }, [attachment])
   useEffect(() => () => { selection.current++ }, [])
 
   return <FormField control={form.control} name="educationDocument" render={({ field }) => (
@@ -61,7 +66,7 @@ export default function EducationAttachmentField({ form, optional }: { form: Use
         </div>}
         <p role="status" aria-live="polite" aria-atomic="true" className={styles.fileStatus}>{selectionMessage || "No attachment selected."}</p>
       </div>
-      <FormDescription>PDF, JPG or PNG, up to 2 MB. Files stay selected between steps. After a page reload, choose the file again.</FormDescription>
+      <FormDescription>PDF, JPG or PNG, up to 2 MB. Files stay selected between steps. Attachments are saved in this device’s draft and restored after a reload.</FormDescription>
       <FormMessage />
     </FormItem>
   )} />

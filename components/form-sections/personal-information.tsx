@@ -6,6 +6,7 @@ import type { formSchema } from "@/lib/form-schema"
 import { applicationFieldsSchema } from "@/lib/form-schema"
 import { isRwandaNationalId, formatIdentificationNumber, identificationNumberError, normalizeEmailAddress } from "@/lib/identity-format"
 import DateOfBirthInput from "@/components/date-of-birth-input"
+import IdentificationNumberInput from "@/components/identification-number-input"
 import PhoneInput from "@/components/phone-input"
 import SearchableSelect from "@/components/searchable-select"
 import { COUNTRIES } from "@/lib/constants"
@@ -190,8 +191,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
             <FormItem>
               <FormLabel className="text-gray-700">{refugeeStatus ? "Refugee Registration Number" : rwandaId ? "National ID Number" : "ID Number"}</FormLabel>
               <FormControl>
-                <Input {...field} value={field.value || ""} required autoComplete="off"
-                  inputMode={rwandaId ? "numeric" : "text"} maxLength={rwandaId ? 19 : 80}
+                <IdentificationNumberInput {...field} nationality={nationality} refugeeStatus={!!refugeeStatus} value={field.value || ""} required
                   onBlur={() => {
                     field.onBlur()
                     const value = formatIdentificationNumber(field.value || "", nationality, !!refugeeStatus)
@@ -200,10 +200,10 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
                     if (message) form.setError("identificationNumber", { type: "validate", message })
                     else form.clearErrors("identificationNumber")
                   }}
-                  placeholder={refugeeStatus ? "Enter your refugee registration number" : "Enter your ID number"}
+                  placeholder={refugeeStatus ? "Enter your refugee registration number" : rwandaId ? "1 1990 8 1234567 0 12" : "Enter your ID number"}
                   className="bg-white text-gray-700 border border-gray-300" />
               </FormControl>
-              <FormDescription>{rwandaId ? "16 digits. Spaces are added for readability; leading zeros are preserved." : "Enter the number exactly as it appears on your document."}</FormDescription>
+              <FormDescription>{rwandaId ? "16 digits, grouped as 1 1990 8 1234567 0 12. Spaces are added as you type." : refugeeStatus ? "Numeric IDs are spaced as you type. Letters and punctuation in other registration numbers are kept." : "Enter the number exactly as it appears on your document."}</FormDescription>
               <FormMessage />
             </FormItem>
           )}

@@ -1,7 +1,9 @@
 "use client"
 
+import { useAdminPrivacy } from "./admin/privacy-context"
 import type { AdminApplication } from "@/lib/admin-application-types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import ContactLink from "./contact-link"
 import { Separator } from "@/components/ui/separator"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +26,8 @@ const statusColors: Record<string, string> = {
 }
 
 export default function ApplicationSummary({ application }: ApplicationSummaryProps) {
+  const hidden=useAdminPrivacy()
+  if(hidden)return <Card className="rounded-2xl"><CardHeader><CardTitle>Application Summary</CardTitle></CardHeader><CardContent><p className="text-sm text-slate-500">Applicant details hidden on screen.</p></CardContent></Card>
   const getStatusBadge = (status: string) => {
     const colorClass = statusColors[status] || "bg-gray-100 text-gray-800"
     return (
@@ -77,11 +81,12 @@ export default function ApplicationSummary({ application }: ApplicationSummaryPr
             <p className="text-base">{application.technicalInterviewMarks}/100</p>
           </div>
         )}
+        <div><h3 className="text-sm font-medium text-muted-foreground">Entry website</h3><p className="text-base">{application.entrySourceDomain || "Data not available"}</p></div>
         <Separator />
         <div>
           <h3 className="text-sm font-medium text-muted-foreground">Contact</h3>
-          <p className="text-base">{application.email}</p>
-          <p className="text-base">{application.phone}</p>
+          <p className="text-base">{<ContactLink value={application.email} kind="email"/>}</p>
+          <p className="text-base">{<ContactLink value={application.phone} kind="phone"/>}</p>
         </div>
       </CardContent>
     </Card>

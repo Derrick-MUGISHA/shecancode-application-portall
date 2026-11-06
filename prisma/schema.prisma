@@ -100,6 +100,12 @@ model Course {
 }
 
 model Application {
+  entryGrantId String? @db.ObjectId
+  entryGrant ApplicationEntry? @relation(fields: [entryGrantId], references: [id])
+  entrySource String?
+  entrySourceUrl String?
+  entrySourceDomain String?
+  entryIssuedAt DateTime?
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   fullName      String
   email         String   @unique
@@ -200,4 +206,18 @@ model Cohort {
   updatedAt DateTime @updatedAt
 
   @@unique([courseId, number])
+}
+
+model ApplicationEntry {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  nonceHash String @unique
+  sessionHash String @unique
+  source String
+  sourceUrl String
+  sourceDomain String
+  issuedAt DateTime
+  redeemedAt DateTime @default(now())
+  expiresAt DateTime
+  submittedAt DateTime?
+  applications Application[]
 }

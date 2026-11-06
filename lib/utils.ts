@@ -9,6 +9,9 @@ export function cn(...inputs: ClassValue[]) {
 
 export function generateDownloadExcel(applications, statusFilter) {
   const excelData = applications.map((app) => ({
+    "Entry Website": app.entrySourceDomain || "",
+    "Entry Program Page": app.entrySourceUrl || "",
+    "Entry Link Issued": app.entryIssuedAt ? new Date(app.entryIssuedAt) : null,
     "Full Name": app.fullName,
     Email: app.email,
     "Date Applied (Kigali)": kigaliDay(app.createdAt),

@@ -5,6 +5,8 @@ import { fetchApplications } from "@/lib/actions"
 import BreadcrumbWithCustomSeparator, { BreadCrumLinkTypes } from "@/components/BreadcrumbWithCustomSeparator"
 import AdminProtectedRoute from "@/components/AdminProtectedRoute"
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Admin - Applications",
   description: "Manage applicant applications",
@@ -31,6 +33,7 @@ export default async function AdminApplicationsPage({ searchParams }: AdminAppli
     status: getSearchParam(params, "status") || "ALL",
     course: getSearchParam(params, "course") || "ALL",
     cohort: getSearchParam(params, "cohort") || "ALL",
+    focus: getSearchParam(params,"focus") === "OPEN" ? "OPEN" : "ALL",
     year: getSearchParam(params, "year") || "ALL",
     from: /^\d{4}-\d{2}-\d{2}$/.test(getSearchParam(params, "from")) ? getSearchParam(params, "from") : "",
     to: /^\d{4}-\d{2}-\d{2}$/.test(getSearchParam(params, "to")) ? getSearchParam(params, "to") : "",

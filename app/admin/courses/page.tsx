@@ -4,6 +4,8 @@ import CourseList from "@/components/admin/course-list"
 import AdminHeader from "@/components/admin/admin-header"
 import AdminProtectedRoute from "@/components/AdminProtectedRoute"
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Admin - Courses",
   description: "Manage courses",

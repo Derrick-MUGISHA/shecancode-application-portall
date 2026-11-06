@@ -1,17 +1,25 @@
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
 import { revalidateTag } from "next/cache"
-import { getPreloadedPrograms, getAllPreloadedPrograms, PROGRAM_CACHE_TAG } from "@/lib/program-data"
+import { readProgramsFresh, PROGRAM_CACHE_TAG } from "@/lib/program-data"
+import { availableProgram } from "@/lib/cohorts"
 import { courseDetailsSchema } from "@/lib/cohorts"
+
+export const dynamic = "force-dynamic"
 
 export async function GET(request: Request) {
   try {
     const openOnly = new URL(request.url).searchParams.get("open") === "true"
-    if (openOnly) return NextResponse.json(await getPreloadedPrograms(), { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=30" } })
-    return NextResponse.json(await getAllPreloadedPrograms(),{headers:{"Cache-Control":"no-store"}})
-  } catch (error) {
-    console.error("Error fetching courses:", error)
-    return NextResponse.json({ message: "Failed to fetch courses" }, { status: 500 })
+    const serverTime = new Date().toISOString()
+    const programs = (await readProgramsFresh()).map(program=>({...program,serverTime}))
+    return NextResponse.json(openOnly?programs.filter(program=>availableProgram(program)):programs,{headers:{
+      "Cache-Control":"no-store, max-age=0, must-revalidate",
+      "CDN-Cache-Control":"no-store",
+      "Vercel-CDN-Cache-Control":"no-store",
+    }})
+  } catch(error) {
+    console.error("Error fetching courses:",error)
+    return NextResponse.json({message:"Failed to fetch courses"},{status:500})
   }
 }
 

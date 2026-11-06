@@ -1,11 +1,14 @@
+import { acceptingApplications, type ProgramAvailability } from "./program-availability"
 export type AdminApplicationRow = {
   id: string; fullName: string; email: string; status: string; createdAt: string | Date
-  cohort?: {id:string;number:number} | null
+  cohort?: {id:string;number:number} & ProgramAvailability | null
   cohortLabel?: string | null
-  course: { id: string; name: string; cohortLabel?: string | null } | null
+  entrySourceDomain?: string | null
+  entrySourceUrl?: string | null
+  course: { id: string; name: string; cohortLabel?: string | null; isOpen?: boolean } | null
 }
-export type AdminFilters = { search: string; status: string; course: string; cohort: string; year: string; from: string; to: string; sort: string }
-export const DEFAULT_ADMIN_FILTERS: AdminFilters = { search: "", status: "ALL", course: "ALL", cohort: "ALL", year: "ALL", from: "", to: "", sort: "newest" }
+export type AdminFilters = { search: string; status: string; course: string; cohort: string; year: string; from: string; to: string; sort: string; focus?: string }
+export const DEFAULT_ADMIN_FILTERS: AdminFilters = { search: "", status: "ALL", course: "ALL", cohort: "ALL", year: "ALL", from: "", to: "", sort: "newest", focus: "ALL" }
 export const cohortOf = (row: AdminApplicationRow) => row.cohort ? `cohort-${row.cohort.number}` : row.cohortLabel || row.course?.cohortLabel || "UNASSIGNED"
 export const cohortName = (value: string) => value === "UNASSIGNED" ? "Data not available" : value
 export function kigaliDay(value: string | Date) {
@@ -17,7 +20,7 @@ export function filterAdminApplications<T extends AdminApplicationRow>(rows: T[]
   const search = filters.search.trim().toLowerCase()
   return rows.filter(row => {
     const day = kigaliDay(row.createdAt)
-    return (!search || `${row.fullName} ${row.email}`.toLowerCase().includes(search)) &&
+    return (filters.focus !== "OPEN" || !!row.cohort && row.course?.isOpen !== false && acceptingApplications(row.cohort)) && (!search || `${row.fullName} ${row.email}`.toLowerCase().includes(search)) &&
       (filters.status === "ALL" || row.status === filters.status) &&
       (filters.course === "ALL" || (row.course?.id || "unknown") === filters.course) &&
       (filters.cohort === "ALL" || cohortOf(row) === filters.cohort) &&
@@ -38,12 +41,13 @@ export function paginateAdminRows<T>(rows: T[], requestedPage: number, requested
   return { rows: rows.slice((page-1)*size,page*size), page, pages, size, start: rows.length ? (page-1)*size+1 : 0, end: Math.min(page*size,rows.length) }
 }
 export function summarizeAdminApplications(rows: AdminApplicationRow[]) {
-  const statuses: Record<string,number> = {}, programs: Record<string,{name:string; count:number}> = {}, cohorts: Record<string,number> = {}, months: Record<string,number> = {}
+  const statuses: Record<string,number> = {}, programs: Record<string,{name:string; count:number}> = {}, cohorts: Record<string,number> = {}, sources: Record<string,number> = {}, months: Record<string,number> = {}
   for (const row of rows) {
     statuses[row.status] = (statuses[row.status] || 0)+1
     const id = row.course?.id || "unknown"
     programs[id] ||= { name: row.course?.name || "Data not available", count: 0 }
     programs[id].count++
+    const source=row.entrySourceDomain||"Data not available"; sources[source]=(sources[source]||0)+1
     const cohort = cohortOf(row); cohorts[cohort] = (cohorts[cohort] || 0)+1
     const month = kigaliDay(row.createdAt).slice(0,7)
     if (month) months[month] = (months[month] || 0)+1
@@ -57,5 +61,5 @@ export function summarizeAdminApplications(rows: AdminApplicationRow[]) {
       const month = date.toISOString().slice(0,7); trend.push({ month, count: months[month] || 0 })
     }
   }
-  return { total: rows.length, underReview: statuses.UNDER_REVIEW || 0, accepted: statuses.ACCEPTED || 0, followUp: statuses.NEEDS_FOLLOW_UP || 0, statuses, programs, cohorts, trend }
+  return { total: rows.length, underReview: statuses.UNDER_REVIEW || 0, accepted: statuses.ACCEPTED || 0, followUp: statuses.NEEDS_FOLLOW_UP || 0, statuses, programs, cohorts, sources, trend }
 }

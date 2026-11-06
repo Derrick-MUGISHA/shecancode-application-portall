@@ -140,11 +140,11 @@
 .applyLink {
   display: inline-flex;
   align-items: center;
-  gap: 25px;
-  min-height: 58px;
-  padding: 9px 11px 9px 25px;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px 22px;
   border: 1px solid #193f60;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #193f60;
   color: #fff;
   font-size: 14px;
@@ -155,10 +155,8 @@
 .buttonIcon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.13);
+  width: 20px;
+  height: 20px;
   transition: transform 250ms;
 }
 .applyLink:hover {

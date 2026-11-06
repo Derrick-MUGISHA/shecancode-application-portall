@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
+import { canDownloadEducationDocument } from "@/lib/verify-document-admin"
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if(!await canDownloadEducationDocument(request))return NextResponse.json({message:"Administrator sign-in required"},{status:401})
   try {
-    const id = params.id
+    const { id } = await params
+    if(!/^[a-f\d]{24}$/i.test(id))return NextResponse.json({message:"Invalid application ID"},{status:400})
 
     const application = await prisma.application.findUnique({
       where: {
@@ -25,9 +28,11 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if(!await canDownloadEducationDocument(request))return NextResponse.json({message:"Administrator sign-in required"},{status:401})
   try {
-    const id = params.id
+    const { id } = await params
+    if(!/^[a-f\d]{24}$/i.test(id))return NextResponse.json({message:"Invalid application ID"},{status:400})
     const body = await request.json()
 
     // Validate application exists
@@ -62,9 +67,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if(!await canDownloadEducationDocument(request))return NextResponse.json({message:"Administrator sign-in required"},{status:401})
   try {
-    const id = params.id
+    const { id } = await params
+    if(!/^[a-f\d]{24}$/i.test(id))return NextResponse.json({message:"Invalid application ID"},{status:400})
 
     // Validate application exists
     const existingApplication = await prisma.application.findUnique({

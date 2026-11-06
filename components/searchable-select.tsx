@@ -25,7 +25,7 @@ const SearchableSelect = forwardRef<HTMLButtonElement, Props>(({ value, onChange
       </PopoverTrigger>
       <PopoverContent align="start" aria-label={`Choose ${label.toLowerCase()}`} className="w-[var(--radix-popover-trigger-width)] border-slate-300 p-0 bg-white text-slate-900 shadow-lg">
         <Command loop className="bg-white text-slate-900">
-          <CommandInput placeholder={`Search ${label.toLowerCase()}…`} aria-label={`Search ${label.toLowerCase()}`} className="bg-slate-50 text-slate-900" />
+          <CommandInput placeholder={`Search ${label.toLowerCase()}…`} aria-label={`Search ${label.toLowerCase()}`} className="bg-slate-50 text-slate-900 px-2" />
           <CommandList>
             <CommandEmpty>No matching options.</CommandEmpty>
             <CommandGroup>{options.map(option => (

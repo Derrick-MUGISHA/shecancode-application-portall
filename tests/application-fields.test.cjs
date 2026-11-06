@@ -8,18 +8,20 @@ const root = path.resolve(__dirname, "..")
 
 function transactionClient(prisma) {
   return { ...prisma, $transaction: async callback => callback({
-    ...prisma, course: { ...prisma.course, update: async () => ({}) },
+    ...prisma, applicationEntry: prisma.applicationEntry || {updateMany:async()=>({count:1})}, course: { ...prisma.course, update: async () => ({}) },
   }) }
 }
 
 function load(relative, stubs = {}) {
-  const filename = path.join(root, relative)
+  let filename = path.join(root, relative)
+  if (!fs.existsSync(filename) && filename.endsWith(".ts")) filename = filename.slice(0,-3) + ".tsx"
   const output = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true, jsx: ts.JsxEmit.ReactJSX },
   }).outputText
   const mod = { exports: {} }
   const localRequire = (id) => {
     if (id in stubs) return stubs[id]
+    if (id === "@/lib/entry-session") return {readEntrySession:async()=>({id:"e".repeat(24),source:"igire-backend",sourceDomain:"www.igirerwanda.org",sourceUrl:"https://www.igirerwanda.org/programs/advanced-java-backend-development",issuedAt:new Date("2026-11-06T10:00:00Z")})}
     if (id === "next/cache") return { unstable_cache: fn => fn, revalidateTag: () => {} }
     if (id.startsWith("@/")) return load(id.slice(2) + ".ts", stubs)
     if (id.startsWith(".")) return load(path.relative(root, path.resolve(path.dirname(filename), id)) + ".ts", stubs)
@@ -299,7 +301,12 @@ test("preloading reuses one cached database result across requests", async () =>
 test("Rwanda IDs retain zeros, accept readable grouping and reject non-16-digit values", () => {
   const {identificationNumberError,formatIdentificationNumber}=load("lib/identity-format.ts")
   assert.equal(identificationNumberError("0012 3456 7890 1234","Rwanda",false),null)
-  assert.equal(formatIdentificationNumber("0012345678901234","Rwanda",false),"0012 3456 7890 1234")
+  assert.equal(formatIdentificationNumber("1199081234567012","Rwanda",false),"1 1990 8 1234567 0 12")
+  assert.equal(formatIdentificationNumber("0012345678901234","Rwanda",false),"0 0123 4 5678901 2 34")
+  assert.equal(formatIdentificationNumber("11990","Rwanda",false),"1 1990")
+  assert.equal(formatIdentificationNumber("1 1990 8 1234567 0 12","Rwanda",false),"1 1990 8 1234567 0 12")
+  assert.equal(formSchema.parse({...valid(),identificationNumber:"1 1990 8 1234567 0 12"}).identificationNumber,"1199081234567012")
+  assert.equal(formatIdentificationNumber("REF-001/25","Rwanda",true),"REF-001/25")
   assert.ok(identificationNumberError("12345","Rwanda",false))
   assert.ok(identificationNumberError("123456789012345x","Rwanda",false))
   assert.equal(formSchema.parse({...valid(),identificationNumber:"0012 3456 7890 1234"}).identificationNumber,"0012345678901234")
@@ -553,3 +560,313 @@ test("resuming cannot skip missing answers even when the draft and URL claim a l
   assert.equal(restoredApplicationStep(valid(),3,3,[{id:valid().courseId,name:"Program",description:null,isOpen:false}]),0)
   assert.equal(restoredApplicationStep({...valid(),cohortId:"other"},3,3,[{id:valid().courseId,name:"Program",description:null,requiresCohort:true,cohorts:[{id:"c",number:1,cohortLabel:"cohort-1",isOpen:true,capacity:10,closesAt:null,applicationCount:0,spacesLeft:10}]}]),0)
 })
+
+test("draft attachments survive module reloads as files and are removed explicitly", async () => {
+  const previous=global.indexedDB
+  const {IDBFactory}=require("fake-indexeddb")
+  global.indexedDB=new IDBFactory()
+  try {
+    const first=load("lib/draft-attachment.ts")
+    const file=pdf()
+    await first.saveDraftAttachment(file)
+    const resumed=load("lib/draft-attachment.ts")
+    const restored=await resumed.loadDraftAttachment()
+    assert.ok(restored instanceof File)
+    assert.equal(restored.name,file.name)
+    assert.equal(restored.type,file.type)
+    assert.equal(restored.lastModified,file.lastModified)
+    assert.equal(await restored.text(),await file.text())
+    assert.equal(await load("lib/education-document.ts").validateEducationFile(restored),null)
+    await resumed.saveDraftAttachment(undefined)
+    assert.equal(await resumed.loadDraftAttachment(),undefined)
+  } finally {if(previous===undefined)delete global.indexedDB;else global.indexedDB=previous}
+})
+
+test("draft attachment saves and removal retain the latest user action", async () => {
+  const previous=global.indexedDB
+  const {IDBFactory}=require("fake-indexeddb")
+  global.indexedDB=new IDBFactory()
+  try {
+    const storage=load("lib/draft-attachment.ts")
+    await Promise.all([storage.saveDraftAttachment(pdf()),storage.saveDraftAttachment(new File(["%PDF-1.7\nsecond"],"second.pdf",{type:"application/pdf"})),storage.saveDraftAttachment(undefined)])
+    assert.equal(await storage.loadDraftAttachment(),undefined)
+  }finally{if(previous===undefined)delete global.indexedDB;else global.indexedDB=previous}
+})
+
+test("open-cohort focus excludes hidden programs, expired and full cohorts", () => {
+  const {visibleAdminCohorts}=load("lib/cohorts.ts")
+  const now=Date.parse("2026-11-06T12:00:00Z")
+  const cohorts=[{id:"open",isOpen:true,capacity:10,applicationCount:3},{id:"full",isOpen:true,capacity:1,applicationCount:1},{id:"closed",isOpen:false},{id:"expired",isOpen:true,closesAt:"2026-11-01T12:00:00Z"}]
+  assert.deepEqual(visibleAdminCohorts({isOpen:true,cohorts},true,now).map(row=>row.id),["open"])
+  assert.deepEqual(visibleAdminCohorts({isOpen:false,cohorts},true,now),[])
+  assert.equal(visibleAdminCohorts({isOpen:true,cohorts},false,now).length,4)
+})
+
+test("masking applicant details removes actual values from rendered screen content", () => {
+  const React=require("react")
+  const {renderToStaticMarkup}=require("react-dom/server")
+  const Wrapper=({children})=>React.createElement("div",null,children)
+  const stubs={
+    "./admin/privacy-context":{useAdminPrivacy:()=>true},
+    "./applicant-info.module.css":{__esModule:true,default:new Proxy({},{get:(_,name)=>String(name)})},
+    "@/components/ui/card":{Card:Wrapper,CardHeader:Wrapper,CardContent:Wrapper},
+    "./education-document-download":{__esModule:true,default:()=>React.createElement("button",null,"Preview attachment")},
+  }
+  const {default:ApplicantInfo}=load("components/ApplicantInfo.tsx",stubs)
+  const html=renderToStaticMarkup(React.createElement(ApplicantInfo,{application:{...valid(),course:null,cohort:null,educationDocumentName:"private-file.pdf"}}))
+  assert.ok(html.includes("Full Name"))
+  assert.ok(html.includes("Hidden"))
+  assert.equal(html.includes("Test Applicant"),false)
+  assert.equal(html.includes("test@example.com"),false)
+  assert.equal(html.includes("0012345678901234"),false)
+  assert.equal(html.includes("private-file.pdf"),false)
+  assert.equal(html.includes("Preview attachment"),false)
+})
+
+test("live program API reads fresh database values and disables browser/CDN caching", async () => {
+  let count=1
+  const prisma={course:{findMany:async()=>[{id:"p",name:"Program",description:null,isOpen:true,_count:{applications:count},cohorts:[]}]}}
+  const {GET,dynamic}=load("app/api/courses/route.ts",{"@/lib/prisma":{__esModule:true,default:prisma}})
+  assert.equal(dynamic,"force-dynamic")
+  const first=await GET(new Request("http://localhost/api/courses?open=true"))
+  assert.equal(first.headers.get("Cache-Control"),"no-store, max-age=0, must-revalidate")
+  assert.equal(first.headers.get("CDN-Cache-Control"),"no-store")
+  assert.equal((await first.json())[0].applicationCount,1)
+  count=2
+  assert.equal((await (await GET(new Request("http://localhost/api/courses?open=true"))).json())[0].applicationCount,2)
+})
+
+test("application focus includes only applications in open, non-full cohorts", () => {
+  const {filterAdminApplications,DEFAULT_ADMIN_FILTERS}=load("lib/admin-applications.ts")
+  const base={id:"a",fullName:"Example",email:"example@example.test",createdAt:new Date(),status:"UNDER_REVIEW",course:{id:"p",name:"Program",isOpen:true},cohort:{id:"c",number:1,isOpen:true,capacity:5,closesAt:"2099-01-01T00:00:00Z",_count:{applications:2}}}
+  const rows=[base,{...base,id:"full",cohort:{...base.cohort,_count:{applications:5}}},{...base,id:"closed",cohort:{...base.cohort,isOpen:false}},{...base,id:"past",cohort:{...base.cohort,closesAt:"2000-01-01T00:00:00Z"}},{...base,id:"hidden",course:{...base.course,isOpen:false}},{...base,id:"legacy",cohort:null}]
+  assert.deepEqual(filterAdminApplications(rows,{...DEFAULT_ADMIN_FILTERS,focus:"OPEN"}).map(row=>row.id),["a"])
+  assert.equal(filterAdminApplications(rows,DEFAULT_ADMIN_FILTERS).length,6)
+})
+
+test("admin answer edits validate changed fields and preserve untouched legacy data", () => {
+  const {validateAdminAnswerPatch}=load("lib/admin-application-edit.ts")
+  const existing={nationality:"Rwanda",refugeeStatus:false,identificationNumber:null,province:"Legacy province"}
+  assert.deepEqual(validateAdminAnswerPatch(existing,{fullName:"  Updated Applicant  "}),{fullName:"Updated Applicant"})
+  assert.throws(()=>validateAdminAnswerPatch(existing,{email:"bad email"}))
+  assert.throws(()=>validateAdminAnswerPatch(existing,{phone:"123"}))
+  assert.throws(()=>validateAdminAnswerPatch(existing,{identificationNumber:"123"}))
+  assert.throws(()=>validateAdminAnswerPatch(existing,{courseId:"other"}))
+  assert.throws(()=>validateAdminAnswerPatch(existing,{status:"ACCEPTED"}))
+  assert.throws(()=>validateAdminAnswerPatch(existing,{educationDocumentName:"fake.pdf"}))
+  assert.throws(()=>validateAdminAnswerPatch(existing,{province:"invalid"}))
+  assert.deepEqual(validateAdminAnswerPatch(existing,{hasYoungChild:false}),{hasYoungChild:false,hasChildcareSupport:false})
+  assert.deepEqual(validateAdminAnswerPatch(existing,{hasDisability:false}),{hasDisability:false,disabilityType:null,disabilityDetails:""})
+})
+
+test("admin answer endpoint requires authentication, checks edit version, and returns saved answers", async () => {
+  const id="a".repeat(24),updatedAt="2026-11-06T10:00:00.000Z"
+  let allowed=false,count=1,writes=[]
+  const route=load("app/api/applications/[id]/details/route.ts",{
+    "@/lib/verify-document-admin":{canDownloadEducationDocument:async()=>allowed},
+    "next/cache":{revalidatePath:()=>{}},
+    "@/lib/prisma":{__esModule:true,default:{application:{findUnique:async()=>({id,fullName:"Updated Example",updatedAt:new Date(updatedAt)}),updateMany:async input=>{writes.push(input);return {count}}}}},
+  })
+  const request=()=>new Request("http://localhost/api/applications/"+id+"/details",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({changes:{fullName:"Updated Example"},updatedAt})})
+  const context={params:Promise.resolve({id})}
+  assert.equal((await route.PATCH(request(),context)).status,401)
+  assert.equal(writes.length,0)
+  allowed=true;count=0
+  assert.equal((await route.PATCH(request(),context)).status,409)
+  assert.equal(writes[0].where.updatedAt.toISOString(),updatedAt)
+  count=1
+  const response=await route.PATCH(request(),context)
+  assert.equal(response.status,200)
+  assert.equal(response.headers.get("Cache-Control"),"private, no-store")
+  assert.equal((await response.json()).application.fullName,"Updated Example")
+  assert.deepEqual(writes.at(-1).data,{fullName:"Updated Example"})
+})
+
+test("portal renders static cohort labels and excludes full cohorts", () => {
+  const React=require("react"),{renderToStaticMarkup}=require("react-dom/server")
+  const tags=Object.fromEntries(["FormItem","FormMessage"].map(name=>[name,({children})=>React.createElement("div",null,children)]))
+  const Component=load("components/form-sections/course-selection.tsx",{"../application-wizard.module.css":{default:{}},"@/components/ui/form":{...tags,FormField:({render})=>render({field:{name:"courseId",onChange:()=>{},onBlur:()=>{},ref:()=>{}}})}}).default
+  const cohort={id:"c",number:1,cohortLabel:"cohort-1",isOpen:true,capacity:2,applicationCount:1,closesAt:"2099-01-01T00:00:00Z"}
+  const course={id:"p",name:"Example program",description:null,isOpen:true,cohorts:[cohort,{...cohort,id:"full",cohortLabel:"cohort-2",applicationCount:2}]}
+  const form={control:{},watch:name=>name==="courseId"?"p":"c",formState:{errors:{}},setValue:()=>{},clearErrors:()=>{}}
+  const html=renderToStaticMarkup(React.createElement(Component,{form,courses:[course],loading:false,error:null,onRetry:()=>{}}))
+  assert.match(html,/cohort-1/)
+  assert.doesNotMatch(html,/cohort-2|combobox|Capacity|spaces|available/)
+  assert.match(html,/Closes/)
+  assert.equal((html.match(/type="radio"/g)||[]).length,1)
+})
+
+test("live ID formatting handles typing, pasting, middle edits and separator deletion", () => {
+  const {identificationInputEdit,normalizeIdentificationNumber}=load("lib/identity-format.ts")
+  for(const refugee of [false,true]){
+    let previous=""
+    for(const digit of "2199071234567012"){
+      const raw=previous+digit
+      const result=identificationInputEdit(raw,previous,raw.length,"Rwanda",refugee,"insertText")
+      assert.equal(result.caret,result.value.length)
+      previous=result.value
+    }
+    assert.equal(previous,"2 1990 7 1234567 0 12")
+    assert.equal(normalizeIdentificationNumber(previous,"Rwanda",refugee),"2199071234567012")
+    const pasted=identificationInputEdit("2199071234567012","",16,"Rwanda",refugee,"insertFromPaste")
+    assert.equal(pasted.value,previous)
+    const middle=identificationInputEdit("2 1990 7 9234567 0 12",previous,10,"Rwanda",refugee,"insertText")
+    assert.equal(middle.caret,10)
+    assert.equal(middle.value,"2 1990 7 9234567 0 12")
+    const backspace=identificationInputEdit("21990","2 1990",1,"Rwanda",refugee,"deleteContentBackward")
+    assert.deepEqual(backspace,{value:"1 990",caret:0})
+    const forward=identificationInputEdit("21990","2 1990",1,"Rwanda",refugee,"deleteContentForward")
+    assert.deepEqual(forward,{value:"2 990",caret:1})
+  }
+  assert.deepEqual(identificationInputEdit("REF-001/25","REF-001/2",10,"Rwanda",true,"insertText"),{value:"REF-001/25",caret:10})
+  assert.equal(normalizeIdentificationNumber("REF-001/25","Rwanda",true),"REF-001/25")
+  assert.equal(identificationInputEdit("0012345678901234","",16,"Rwanda",true).value,"0 0123 4 5678901 2 34")
+})
+
+async function entryEnvironment(callback){
+  const names=["NODE_ENV","APPLICATION_ENTRY_ENCRYPTION_KEY","APPLICATION_PORTAL_URL","IGIRE_APPLICATION_ENTRY_SECRET","SHECANCODE_APPLICATION_ENTRY_SECRET"]
+  const previous=Object.fromEntries(names.map(name=>[name,process.env[name]]))
+  Object.assign(process.env,{NODE_ENV:"production",APPLICATION_ENTRY_ENCRYPTION_KEY:crypto.randomBytes(32).toString("hex"),APPLICATION_PORTAL_URL:"https://apply.example.test",IGIRE_APPLICATION_ENTRY_SECRET:crypto.randomBytes(32).toString("hex"),SHECANCODE_APPLICATION_ENTRY_SECRET:crypto.randomBytes(32).toString("hex")})
+  try{return await callback()}finally{for(const name of names){if(previous[name]===undefined)delete process.env[name];else process.env[name]=previous[name]}}
+}
+test("entry tokens encrypt website, time and nonce; reject tampering, expiry and wrong audience",()=>entryEnvironment(async()=>{
+  const {issueEntryToken,verifyEntryToken}=load("lib/entry-token.ts")
+  const now=Math.floor(Date.now()/1000),token=issueEntryToken("igire-backend",now),entry=verifyEntryToken(token,now)
+  assert.equal(entry.domain,"www.igirerwanda.org")
+  assert.equal(entry.source,"igire-backend")
+  assert.equal(entry.iat,now)
+  assert.equal(entry.exp,now+300)
+  assert.equal(entry.nonce.length,43)
+  assert.ok(!token.includes("igire")&&!token.includes(entry.nonce))
+  assert.notEqual(issueEntryToken("igire-backend",now),token)
+  const parts=token.split(".");parts[2]=(parts[2][0]==="A"?"B":"A")+parts[2].slice(1)
+  assert.throws(()=>verifyEntryToken(parts.join("."),now))
+  assert.throws(()=>verifyEntryToken(token,now+300))
+  assert.throws(()=>verifyEntryToken(token,now-31))
+  process.env.APPLICATION_PORTAL_URL="https://other.example.test"
+  assert.throws(()=>verifyEntryToken(token,now))
+  assert.throws(()=>issueEntryToken("development",now))
+}))
+test("source secrets authenticate only their own websites, and missing production encryption fails closed",()=>entryEnvironment(async()=>{
+  const {authenticateEntrySource,issueEntryToken}=load("lib/entry-token.ts")
+  assert.equal(authenticateEntrySource("igire-frontend",`Bearer ${process.env.IGIRE_APPLICATION_ENTRY_SECRET}`),true)
+  assert.equal(authenticateEntrySource("shecancode",`Bearer ${process.env.IGIRE_APPLICATION_ENTRY_SECRET}`),false)
+  assert.equal(authenticateEntrySource("development",`Bearer ${process.env.IGIRE_APPLICATION_ENTRY_SECRET}`),false)
+  assert.equal(authenticateEntrySource("igire-backend",null),false)
+  delete process.env.APPLICATION_ENTRY_ENCRYPTION_KEY
+  assert.throws(()=>issueEntryToken("igire-backend"))
+}))
+test("redemption stores hashed credentials, rejects replay across instances, and expires browser sessions",()=>entryEnvironment(async()=>{
+  const {issueEntryToken,digestEntrySecret}=load("lib/entry-token.ts")
+  const records=new Map(),prisma={applicationEntry:{create:async({data})=>{if(records.has(data.nonceHash))throw Object.assign(Error("replay"),{code:"P2002"});records.set(data.nonceHash,data)},findUnique:async({where})=>Array.from(records.values()).find(value=>value.sessionHash===where.sessionHash)||null}}
+  const stubs={"./prisma":{__esModule:true,default:prisma}}
+  const first=load("lib/entry-session.ts",stubs),second=load("lib/entry-session.ts",stubs)
+  const token=issueEntryToken("igire-frontend"),session=await first.redeemEntryToken(token)
+  const stored=Array.from(records.values())[0]
+  assert.equal(stored.sessionHash,digestEntrySecret(session));assert.notEqual(stored.sessionHash,session)
+  await assert.rejects(()=>second.redeemEntryToken(token))
+  assert.equal((await second.entrySessionFromCookie(session)).source,"igire-frontend")
+  stored.submittedAt=new Date();assert.equal(await first.entrySessionFromCookie(session),null)
+  stored.submittedAt=null;stored.expiresAt=new Date(0);assert.equal(await second.entrySessionFromCookie(session),null)
+  assert.equal(await first.entrySessionFromCookie("invalid"),null)
+}))
+test("direct API submission without a valid entry cannot write an application",async()=>{
+  let written=false
+  const {POST}=load("app/api/applications/route.ts",{"@/lib/entry-session":{readEntrySession:async()=>null},"@/lib/prisma":{__esModule:true,default:{application:{create:async()=>{written=true}}}}})
+  const response=await POST(new Request("https://apply.example.test/api/applications",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(valid())}))
+  assert.equal(response.status,403);assert.equal(written,false)
+})
+test("entry sessions are reserved within submission transactions and cannot submit twice",async()=>{
+  const {createApplicationWithAvailability}=load("lib/create-application.ts")
+  let reserved=false,created=0
+  const tx={applicationEntry:{updateMany:async()=>reserved?{count:0}:(reserved=true,{count:1})},course:{findUnique:async()=>({id:"p",isOpen:true,_count:{cohorts:0,applications:0}}),update:async()=>({})},application:{create:async()=>({id:String(++created)})}}
+  const prisma={$transaction:async callback=>callback(tx)}
+  const data={entryGrantId:"e",courseId:"p",email:"example@example.test"}
+  assert.equal((await createApplicationWithAvailability(prisma,data)).id,"1")
+  await assert.rejects(()=>createApplicationWithAvailability(prisma,data),/already used/)
+  assert.equal(created,1)
+})
+test("public token issuer and redemption endpoints fail closed without valid credentials",()=>entryEnvironment(async()=>{
+  const {POST}=load("app/api/application-entry/token/route.ts")
+  const request=authorization=>new Request("https://apply.example.test/api/application-entry/token",{method:"POST",headers:{"Content-Type":"application/json",...(authorization?{Authorization:authorization}:{})},body:JSON.stringify({source:"igire-fundamentals"})})
+  assert.equal((await POST(request())).status,401)
+  const response=await POST(request(`Bearer ${process.env.IGIRE_APPLICATION_ENTRY_SECRET}`))
+  assert.equal(response.status,200);assert.equal(response.headers.get("Cache-Control"),"private, no-store")
+  assert.equal(new URL((await response.json()).entryUrl).origin,"https://apply.example.test")
+  const {POST:dev}=load("app/api/application-entry/development/route.ts")
+  assert.equal((await dev(new Request("http://localhost:3000/api/application-entry/development",{method:"POST"}))).status,404)
+}))
+
+test("Igire integration obtains a fresh server token for each of its three program buttons",()=>entryEnvironment(async()=>{
+  const originalFetch=global.fetch,calls=[]
+  const {POST}=load("integrations/igire-entry-route.ts")
+  global.fetch=async(url,options)=>{calls.push({url:String(url),options});return Response.json({entryUrl:"https://apply.example.test/entry?token=opaque"})}
+  try{
+    for(const [slug,source] of [["advanced-java-backend-development","igire-backend"],["advanced-frontend-development","igire-frontend"],["web-fundamentals","igire-fundamentals"]]){
+      const body=new FormData();body.set("program",slug)
+      const response=await POST(new Request("https://www.igirerwanda.org/api/application-entry",{method:"POST",headers:{Origin:"https://www.igirerwanda.org"},body}))
+      assert.equal(response.status,303)
+      assert.equal(response.headers.get("location"),"https://apply.example.test/entry?token=opaque")
+      assert.equal(JSON.parse(calls.at(-1).options.body).source,source)
+      assert.equal(calls.at(-1).options.headers.Authorization,`Bearer ${process.env.IGIRE_APPLICATION_ENTRY_SECRET}`)
+      assert.equal(calls.at(-1).options.redirect,"error")
+    }
+    const body=new FormData();body.set("program","web-fundamentals")
+    assert.equal((await POST(new Request("https://www.igirerwanda.org/api/application-entry",{method:"POST",headers:{Origin:"https://untrusted.example"},body}))).status,403)
+    assert.equal(calls.length,3)
+  }finally{global.fetch=originalFetch}
+}))
+
+test("SheCanCode integration uses its own secret and source",()=>entryEnvironment(async()=>{
+  const originalFetch=global.fetch,calls=[]
+  global.fetch=async(url,options)=>{calls.push(options);return Response.json({entryUrl:"https://apply.example.test/entry?token=opaque"})}
+  try{
+    const {POST}=load("integrations/shecancode-entry-route.ts")
+    const response=await POST(new Request("https://www.shecancodeschool.org/api/application-entry",{method:"POST",headers:{Origin:"https://www.shecancodeschool.org"}}))
+    assert.equal(response.status,303)
+    assert.equal(calls[0].headers.Authorization,`Bearer ${process.env.SHECANCODE_APPLICATION_ENTRY_SECRET}`)
+    assert.deepEqual(JSON.parse(calls[0].body),{source:"shecancode"})
+  }finally{global.fetch=originalFetch}
+}))
+test("redemption issues only a private session cookie and removes the token from the next URL",()=>entryEnvironment(async()=>{
+  let redeemed=0
+  const {POST}=load("app/api/application-entry/redeem/route.ts",{"@/lib/entry-session":{redeemEntryToken:async token=>{redeemed++;if(token!=="valid")throw Error();return "x".repeat(43)}}})
+  const request=(token,origin="https://apply.example.test")=>{const data=new FormData();data.set("token",token);return new Request("https://apply.example.test/api/application-entry/redeem",{method:"POST",headers:{Origin:origin},body:data})}
+  const response=await POST(request("valid"))
+  assert.equal(response.status,303)
+  assert.equal(response.headers.get("location"),"https://apply.example.test/apply?step=1")
+  assert.match(response.headers.get("set-cookie"),/HttpOnly/)
+  assert.match(response.headers.get("set-cookie"),/Secure/)
+  assert.match(response.headers.get("set-cookie"),/SameSite=lax/i)
+  assert.equal((await POST(request("valid","https://other.example"))).headers.get("set-cookie"),null)
+  assert.equal(redeemed,1)
+  const invalid=await POST(request("used"))
+  assert.match(invalid.headers.get("location"),/entry\/required\?error=invalid$/)
+  assert.equal(invalid.headers.get("set-cookie"),null)
+}))
+
+test("Igire Apply hrefs preserve existing button content and use navigation rather than a cross-site form",()=>{
+  const {rewriteProgramApplyLinks}=load("integrations/igire-entry-links.ts")
+  for(const href of ["https://apply.shecancodeschool.org/apply","https://apply.shecancodeschool.org/"]){
+    const html=`<a href="${href}" target="_blank" class="original-style">Apply Now</a>`
+    const rewritten=rewriteProgramApplyLinks(html,"advanced-java-backend-development")
+    assert.equal(rewritten,'<a href="/api/application-entry?program=advanced-java-backend-development" class="original-style">Apply Now</a>')
+    assert.doesNotMatch(rewritten,/<form|https:\/\/apply/)
+  }
+  assert.equal(rewriteProgramApplyLinks('<span>Applications Closed</span>',"web-fundamentals"),'<span>Applications Closed</span>')
+})
+test("Igire link navigation issues a fresh token without consuming it and rejects unknown programs",()=>entryEnvironment(async()=>{
+  const originalFetch=global.fetch,calls=[]
+  global.fetch=async(url,options)=>{calls.push(options);return Response.json({entryUrl:`https://apply.example.test/entry?token=fresh${calls.length}`})}
+  try{
+    const {GET}=load("integrations/igire-entry-route.ts")
+    const request=()=>new Request("https://www.igirerwanda.org/api/application-entry?program=advanced-java-backend-development")
+    const first=await GET(request()),second=await GET(request())
+    assert.equal(first.status,303)
+    assert.notEqual(first.headers.get("location"),second.headers.get("location"))
+    assert.equal(first.headers.get("Cache-Control"),"private, no-store")
+    assert.deepEqual(JSON.parse(calls[0].body),{source:"igire-backend"})
+    assert.equal((await GET(new Request("https://www.igirerwanda.org/api/application-entry?program=constructor"))).status,400)
+    assert.equal(calls.length,2)
+  }finally{global.fetch=originalFetch}
+}))
