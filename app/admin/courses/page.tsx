@@ -1,3 +1,4 @@
+import { getAllPreloadedPrograms } from "@/lib/program-data"
 import type { Metadata } from "next"
 import CourseList from "@/components/admin/course-list"
 import AdminHeader from "@/components/admin/admin-header"
@@ -8,17 +9,14 @@ export const metadata: Metadata = {
   description: "Manage courses",
 }
 
-export default function AdminCoursesPage() {
+export default async function AdminCoursesPage() {
+  const programs = await getAllPreloadedPrograms().catch(() => undefined)
   return (
     <AdminProtectedRoute>
     <div className="min-h-screen flex flex-col">
       <AdminHeader />
       <main className="flex-1 container mx-auto py-8 px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-700">Courses</h1>
-          <p className="text-muted-foreground pt-2">Manage available courses for applications</p>
-        </div>
-        <CourseList />
+        <CourseList initialPrograms={programs} />
       </main>
       </div>
       </AdminProtectedRoute>

@@ -253,8 +253,10 @@ export async function fetchApplications() {
     const applications = await prisma.application.findMany({
       include: {
         course: {
-          select: { id: true, name: true },
+          select: { id: true, name: true, cohortLabel: true },
         },
+        cohort: { select: {id:true,number:true} },
+
       },
     })
 

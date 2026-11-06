@@ -31,6 +31,9 @@ enum EnglishSkillConfidence {
 }
 
 enum EducationBackground {
+  NO_FORMAL_EDUCATION
+  PRIMARY_SCHOOL
+  DIPLOMA
   HIGH_SCHOOL
   TECHNICAL_SCHOOL
   YEAR_1_UNIVERSITY
@@ -79,12 +82,19 @@ enum ApplicationStatus {
 }
 
 model Course {
+  requiresCohort Boolean @default(false)
+  isOpen Boolean @default(true)
+  cohortLabel String?
+  submissionLock String?
+  capacity Int?
+  closesAt DateTime?
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  cohorts Cohort[]
   applications Application[]
   Email        Email[]
 }
@@ -97,6 +107,7 @@ model Application {
   gender        Gender
   phone         String
   nationality   String
+  identificationNumber String?
   refugeeStatus Boolean
 
   hasDisability     Boolean
@@ -118,7 +129,10 @@ model Application {
 
   hasLaptop         Boolean
   currentOccupation Occupation
+  occupationDetails String?
 
+  educationDocumentName String?
+  educationDocument EducationDocument?
   educationBackground    EducationBackground
   university             String?
   academicBackground     String
@@ -140,6 +154,9 @@ model Application {
   decisionDate            DateTime?
   technicalInterviewMarks Float?
 
+  cohortLabel String?
+  cohortId String? @db.ObjectId
+  cohort Cohort? @relation(fields: [cohortId], references: [id])
   courseId String? @db.ObjectId
   course   Course? @relation(fields: [courseId], references: [id])
 
@@ -156,4 +173,31 @@ model Email {
   invitationDate DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+
+model EducationDocument {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  applicationId String @unique @db.ObjectId
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  name String
+  contentType String
+  data Bytes
+}
+
+
+model Cohort {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  courseId String @db.ObjectId
+  course Course @relation(fields: [courseId], references: [id])
+  number Int
+  capacity Int?
+  closesAt DateTime?
+  isOpen Boolean @default(false)
+  submissionLock String?
+  applications Application[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, number])
 }

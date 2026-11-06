@@ -14,7 +14,7 @@ interface AdditionalInformationProps {
 }
 
 export default function AdditionalInformation({ form }: AdditionalInformationProps) {
-  const optionsRequiringSpecification = ["FRIENDS", "ALUMNI", "SCHOOL", "SOCIAL_MEDIA", "EVENT", "OTHER"]
+  const optionsRequiringSpecification = ["FRIENDS", "ALUMNI", "SCHOOL", "SOCIAL_MEDIA", "WEBSITE", "NEWSPAPER", "RADIO", "TV", "EVENT", "OTHER", "SHE_CAN_CODE_AMBASSADOR"]
   const howDidYouKnow = form.watch("howDidYouKnow")
   const showSpecification = optionsRequiringSpecification.includes(howDidYouKnow)
 
@@ -24,6 +24,11 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
       case "ALUMNI": return "Alumni name/cohort"
       case "SCHOOL": return "School name"
       case "SOCIAL_MEDIA": return "Which platform?"
+      case "WEBSITE": return "Which website?"
+      case "NEWSPAPER": return "Newspaper name"
+      case "RADIO": return "Radio station"
+      case "TV": return "TV channel"
+      case "SHE_CAN_CODE_AMBASSADOR": return "Ambassador’s name"
       case "EVENT": return "Event name"
       case "OTHER": return "Please specify"
       default: return ""
@@ -91,10 +96,10 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
                   field.onChange(value)
                   form.setValue("howDidYouKnowSpecification", "")
                 }}
-                defaultValue={field.value}
+                value={field.value}
               >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger aria-required="true">
                     <SelectValue placeholder="Select how you heard about us" />
                   </SelectTrigger>
                 </FormControl>
@@ -124,14 +129,32 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-gray-700">{specificationLabel}</FormLabel>
-                <FormControl>
-                  <Input
-                    className="bg-white text-gray-700 border border-gray-300"
-                    placeholder={`Please specify ${specificationLabel.toLowerCase()}`}
-                    {...field}
-                    value={field.value || ""}
-                  />
-                </FormControl>
+                {howDidYouKnow === "SOCIAL_MEDIA" ? (
+                  <Select value={field.value || ""} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger onBlur={field.onBlur} ref={field.ref}>
+                        <SelectValue placeholder="Select a social media platform" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {["Instagram", "Facebook", "LinkedIn", "X (Twitter)", "TikTok", "YouTube", "WhatsApp", "Other"].map(platform => (
+                        <SelectItem key={platform} value={platform}>{platform}</SelectItem>
+                      ))}
+                      {field.value && !["Instagram", "Facebook", "LinkedIn", "X (Twitter)", "TikTok", "YouTube", "WhatsApp", "Other"].includes(field.value) && (
+                        <SelectItem value={field.value}>{field.value}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <FormControl>
+                    <Input
+                      className="bg-white text-gray-700 border border-gray-300"
+                      placeholder={specificationLabel}
+                      {...field}
+                      value={field.value || ""}
+                    />
+                  </FormControl>
+                )}
                 <FormMessage />
               </FormItem>
             )}
@@ -147,7 +170,7 @@ export default function AdditionalInformation({ form }: AdditionalInformationPro
           <FormItem>
             <FormLabel className="bg-white text-gray-700">Motivation</FormLabel>
             <FormControl>
-              <Textarea
+              <Textarea required
                 placeholder="Please describe your motivation for applying to this course"
                 className="min-h-[120px] bg-white text-gray-700 border border-gray-300"
                 {...field}

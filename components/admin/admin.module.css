@@ -1,0 +1,75 @@
+.workspace { display: flex; flex-direction: column; gap: 24px; color: #233c50; }
+.heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.heading h1 { font-size: 28px; font-weight: 600; letter-spacing: -.035em; color: #183b56; }
+.heading p { font-size: 14px; color: #637589; margin-top: 5px; }
+.toolbar, .panel { border: 1px solid #dfe7ee; border-radius: 16px; padding: 20px; background: #fff; box-shadow: 0 3px 16px #183b5605; }
+.filters { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
+.filter { display: flex; flex-direction: column; gap: 7px; min-width: 0; font-size: 12px; font-weight: 500; color: #52687b; }
+.filter input, .filter select { min-height: 44px; width: 100%; border: 1px solid #c8d5e0; border-radius: 8px; padding: 9px 11px; background: #fff; color: #183b56; font-size: 13px; font-weight: 400; }
+.filter input:focus-visible, .filter select:focus-visible { outline: 2px solid #3576ad; outline-offset: 2px; }
+.filter option { background: #fff; color: #183b56; }
+.filterFooter, .tableHeader, .pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.filterFooter { margin-top: 16px; font-size: 12px; color: #637589; }
+.tableHeader { padding-bottom: 18px; }
+.tableHeader h2, .panel h2 { font-size: 17px; font-weight: 600; color: #183b56; }
+.metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
+.metric { border: 1px solid #dfe7ee; border-radius: 14px; padding: 20px; background: #fff; }
+.metric > span { font-size: 12px; color: #52687b; display: flex; align-items: center; gap: 8px; }
+.metric strong { display: block; font-size: 30px; line-height: 1.2; font-weight: 600; color: #183b56; margin-top: 12px; font-variant-numeric: tabular-nums; }
+.metric small { display: block; margin-top: 6px; color: #637589; font-size: 11px; }
+.charts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
+.barRow { margin-top: 16px; }
+.barRow > div:first-child { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; color: #52687b; }
+.barRow strong { color: #183b56; font-size: 13px; white-space: nowrap; }
+.track { height: 7px; border-radius: 8px; background: #edf2f6; margin-top: 7px; overflow: hidden; }
+.track i { display: block; height: 100%; min-width: 0; background: #397eae; border-radius: inherit; }
+.trend { display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); gap: 7px; align-items: end; margin-top: 22px; height: 150px; }
+.trend > div { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; height: 100%; gap: 6px; }
+.trend i { display: block; width: 100%; max-width: 32px; border-radius: 4px 4px 0 0; background: #4385b5; }
+.trend small { font-size: 9px; color: #637589; white-space: nowrap; }
+.trend b { font-size: 10px; color: #244760; font-weight: 500; }
+.note { font-size: 12px; color: #637589; margin-top: 7px; line-height: 1.7; }
+.pagination { padding-top: 18px; margin-top: 14px; border-top: 1px solid #e3eaf0; font-size: 13px; color: #52687b; }
+.pagination > div { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pagination button { min-height: 40px; }
+.tableScroll { overflow-x: auto; }
+.workspace table { min-width: 900px; font-size: 13px; }
+.workspace th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .055em; color: #637589; background: #f7f9fb; }
+.workspace td { padding-block: 16px; color: #334e63; vertical-align: middle; }
+.workspace tbody tr:hover { background: #f8fbfd; }
+.status { display: inline-flex; padding: 5px 9px; border-radius: 8px; font-size: 10px; font-weight: 600; line-height: 1.5; box-shadow: none; }
+.selection { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px; background: #eef5fa; border: 1px solid #cbddea; border-radius: 10px; font-size: 13px; }
+.empty { text-align: center; padding: 36px 20px; color: #637589; font-size: 14px; }
+.detailScope :global([data-state="active"][role="tab"]) { color: #fff; background: #193f60; border: 1px solid #193f60; }
+.detailScope :global([role="tablist"]) { height: auto; padding: 5px; border-radius: 12px; background: #f1f5f9; }
+.detailScope :global([role="tab"]) { min-height: 44px; border-radius: 8px; }
+.detailScope :global([data-slot="card"]) { border-radius: 14px; }
+.summary { position: sticky; top: 24px; align-self: start; }
+@media(max-width:1000px) { .filters { grid-template-columns: repeat(2,minmax(0,1fr)); } .charts { grid-template-columns: 1fr; } }
+@media(max-width:600px) { .filters { grid-template-columns: 1fr; } .metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } .metric { padding: 14px; } .toolbar,.panel { padding: 16px; } .summary { position: static; } }
+
+.detailScope :global([role="tabpanel"]) :global(.grid) > div:has(> h3) { padding: 12px; border-radius: 10px; background: #f7f9fb; }
+.detailScope :global([role="tabpanel"]) h3 { color: #637589; font-size: 12px; }
+.detailScope :global([role="tabpanel"]) h3 + p { margin-top: 5px; color: #233c50; line-height: 1.7; }
+
+.filter input[type="search"] { padding-left: 38px; }
+
+/* Restore readable admin typography and the shared styled controls. */
+.filter { font-size: 14px; gap: 8px; }
+.filter input, .filter select { font-size: 14px; }
+.workspace table { font-size: 14px; }
+.workspace th { font-size: 13px; text-transform: none; letter-spacing: normal; }
+.status, .metric > span, .metric small, .note, .filterFooter, .barRow > div:first-child { font-size: 14px; }
+.trend small, .trend b { font-size: 12px; }
+.programList { display: flex; flex-direction: column; gap: 16px; }
+.program { border: 1px solid #dfe7ee; border-radius: 14px; overflow: hidden; background: #fff; }
+.programTop { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 22px; }
+.programTop h2 { font-size: 19px; color: #193f60; font-weight: 600; }
+.programTop p { margin-top: 7px; font-size: 14px; color: #637589; }
+.programActions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.cohortArea { padding: 20px 22px; border-top: 1px solid #dfe7ee; background: #f8fafc; }
+.cohortArea table { min-width: 700px; }
+.cohortArea th { background: #edf2f6; }
+.cohortArea td { background: #fff; }
+
+.detailScope :global([role="tabpanel"]) h3 { font-size: 14px; }
