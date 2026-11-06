@@ -1,7 +1,13 @@
 "use client"
+import { UserRound } from "lucide-react"
 import type { UseFormReturn } from "react-hook-form"
 import type { z } from "zod"
 import type { formSchema } from "@/lib/form-schema"
+import { applicationFieldsSchema } from "@/lib/form-schema"
+import { isRwandaNationalId, formatIdentificationNumber, identificationNumberError, normalizeEmailAddress } from "@/lib/identity-format"
+import DateOfBirthInput from "@/components/date-of-birth-input"
+import PhoneInput from "@/components/phone-input"
+import SearchableSelect from "@/components/searchable-select"
 import { COUNTRIES } from "@/lib/constants"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useWatch } from "react-hook-form"
@@ -35,6 +41,9 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
     name: "refugeeStatus",
   })
 
+  const nationality = form.watch("nationality") || ""
+  const rwandaId = isRwandaNationalId(nationality, !!refugeeStatus)
+
   return (
     <div className="space-y-6">
       <div>
@@ -52,8 +61,8 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
               <FormLabel className="text-gray-700">Full Name</FormLabel>
               <FormControl>
                 <Input
-                  className="bg-white text-gray-700 border border-gray-300 focus:border-[#ECAB88] focus:ring-1 focus:ring-[#ECAB88] focus:outline-none"
-                  placeholder="John Doe"
+                  className="bg-white text-gray-700 border border-gray-300"
+                  placeholder="John Doe" autoComplete="name" required
                   {...field}
                 />
               </FormControl>
@@ -72,9 +81,17 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
               <FormControl>
                 <Input
                   className="bg-white text-gray-700 border border-gray-300"
-                  type="email"
+                  type="email" required autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false}
                   placeholder="john.doe@example.com"
                   {...field}
+                  onBlur={() => {
+                    field.onBlur()
+                    const value = normalizeEmailAddress(field.value || "")
+                    field.onChange(value)
+                    const result = applicationFieldsSchema.shape.email.safeParse(value)
+                    if (!result.success) form.setError("email", { type: "validate", message: result.error.issues[0].message })
+                    else form.clearErrors("email")
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -82,85 +99,13 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           )}
         />
 
-        {/* Date of Birth */}
-        <FormField
-          control={form.control}
-          name="dateOfBirth"
-          render={({ field }) => {
-            const date = field.value ? new Date(field.value) : null
-            const selectedDay = date?.getDate().toString()
-            const selectedMonth = (date?.getMonth() ?? 0).toString()
-            const selectedYear = date?.getFullYear().toString()
-
-            const handleChange = (type: "day" | "month" | "year", value: string) => {
-              const d = date ?? new Date()
-              const year = type === "year" ? Number.parseInt(value) : d.getFullYear()
-              const month = type === "month" ? Number.parseInt(value) : d.getMonth()
-              const day = type === "day" ? Number.parseInt(value) : d.getDate()
-              const newDate = new Date(year, month, day)
-              field.onChange(newDate)
-            }
-
-            return (
-              <FormItem>
-                <FormLabel className="text-gray-700">Date of Birth</FormLabel>
-                <div className="grid grid-cols-3 gap-2">
-                  {/* Day */}
-                  <Select value={selectedDay} onValueChange={(val) => handleChange("day", val)}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Day" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {[...Array(31)].map((_, i) => (
-                        <SelectItem key={i} value={(i + 1).toString()}>
-                          {i + 1}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Month */}
-                  <Select value={selectedMonth} onValueChange={(val) => handleChange("month", val)}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Month" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => (
-                        <SelectItem key={i} value={i.toString()}>
-                          {new Date(0, i).toLocaleString("default", { month: "long" })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Year */}
-                  <Select value={selectedYear} onValueChange={(val) => handleChange("year", val)}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Year" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="max-h-[200px] overflow-y-scroll">
-                      {Array.from({ length: 100 }, (_, i) => {
-                        const year = new Date().getFullYear() - i
-                        return (
-                          <SelectItem key={year} value={year.toString()}>
-                            {year}
-                          </SelectItem>
-                        )
-                      })}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )
-          }}
-        />
+        <FormField control={form.control} name="dateOfBirth" render={({ field }) => (
+          <FormItem>
+            <FormLabel>Date of Birth</FormLabel>
+            <FormControl><DateOfBirthInput ref={field.ref} value={field.value} onChange={field.onChange} onBlur={field.onBlur} /></FormControl>
+            <FormMessage />
+          </FormItem>
+        )} />
 
         {/* Gender */}
         <FormField
@@ -171,7 +116,7 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
               <FormLabel className="text-gray-700">Gender</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger icon={UserRound} aria-required="true">
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                 </FormControl>
@@ -200,9 +145,9 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
             <FormItem>
               <FormLabel className="text-gray-700">Phone Number</FormLabel>
               <FormControl>
-                <Input className="bg-white text-gray-700 border border-gray-300" placeholder="1234567890" {...field} />
+                <PhoneInput required className="bg-white text-gray-700 border border-gray-300" {...field} />
               </FormControl>
-              <FormDescription>Must be exactly 10 digits</FormDescription>
+              <FormDescription>Use +country code for numbers outside Rwanda.</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -215,20 +160,9 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           render={({ field }) => (
             <FormItem>
               <FormLabel className="text-gray-700">Nationality</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your nationality" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent className="max-h-[200px]">
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country} value={country}>
-                      {country}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormControl>
+                <SearchableSelect {...field} aria-required="true" label="Nationality" options={COUNTRIES.map(country => ({ value: country, label: country }))} />
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
@@ -239,14 +173,38 @@ export default function PersonalInformation({ form }: PersonalInformationProps) 
           control={form.control}
           name="refugeeStatus"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-gray-300 p-4">
-              <FormControl>
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="text-gray-700">I am a refugee</FormLabel>
-                <FormDescription>Check this box if you have refugee status</FormDescription>
+            <FormItem>
+              <span className="block text-sm font-medium text-gray-700">Refugee Status</span>
+              <div className="flex h-11 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3">
+                <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                <FormLabel className="font-normal text-gray-700">I am a refugee</FormLabel>
               </div>
+              <FormDescription>Select if you have refugee status.</FormDescription>
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="identificationNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-gray-700">{refugeeStatus ? "Refugee Registration Number" : rwandaId ? "National ID Number" : "ID Number"}</FormLabel>
+              <FormControl>
+                <Input {...field} value={field.value || ""} required autoComplete="off"
+                  inputMode={rwandaId ? "numeric" : "text"} maxLength={rwandaId ? 19 : 80}
+                  onBlur={() => {
+                    field.onBlur()
+                    const value = formatIdentificationNumber(field.value || "", nationality, !!refugeeStatus)
+                    field.onChange(value)
+                    const message = identificationNumberError(value, nationality, !!refugeeStatus)
+                    if (message) form.setError("identificationNumber", { type: "validate", message })
+                    else form.clearErrors("identificationNumber")
+                  }}
+                  placeholder={refugeeStatus ? "Enter your refugee registration number" : "Enter your ID number"}
+                  className="bg-white text-gray-700 border border-gray-300" />
+              </FormControl>
+              <FormDescription>{rwandaId ? "16 digits. Spaces are added for readability; leading zeros are preserved." : "Enter the number exactly as it appears on your document."}</FormDescription>
+              <FormMessage />
             </FormItem>
           )}
         />

@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { kigaliDay } from "@/lib/admin-applications"
 import * as xlsx from "xlsx"
 
 export function cn(...inputs: ClassValue[]) {
@@ -10,6 +11,7 @@ export function generateDownloadExcel(applications, statusFilter) {
   const excelData = applications.map((app) => ({
     "Full Name": app.fullName,
     Email: app.email,
+    "Date Applied (Kigali)": kigaliDay(app.createdAt),
     "Date of Birth": app.dateOfBirth ? new Date(app.dateOfBirth) : null,
     Gender: app.gender,
     Phone: app.phone,
@@ -19,6 +21,7 @@ export function generateDownloadExcel(applications, statusFilter) {
     Cell: app.cell,
     Village: app.village,
     Nationality: app.nationality,
+    "ID / Refugee Registration Number": app.identificationNumber || "",
     "Refugee Status": app.refugeeStatus ? "Yes" : "No",
     "Has Disability": app.hasDisability ? "Yes" : "No",
     "Disability Type": app.disabilityType,
@@ -30,6 +33,8 @@ export function generateDownloadExcel(applications, statusFilter) {
     "Has Childcare Support": app.hasChildcareSupport ? "Yes" : "No",
     "Has Laptop": app.hasLaptop ? "Yes" : "No",
     "Current Occupation": app.currentOccupation,
+    "Current Work / Studies / Activities": app.occupationDetails || "",
+    "Education Attachment": app.educationDocumentName || "",
     "Education Background": app.educationBackground,
     University: app.university,
     "Academic Background": app.academicBackground,
@@ -48,6 +53,7 @@ export function generateDownloadExcel(applications, statusFilter) {
     "Decision Date": app.decisionDate ? new Date(app.decisionDate) : null,
     "Technical Interview Marks": app.technicalInterviewMarks,
     "Course Name": app.course?.name ?? "",
+    Cohort: app.cohortLabel || app.course?.cohortLabel || "",
   }))
 
   const ws = xlsx.utils.json_to_sheet(excelData)

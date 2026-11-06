@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment, useEffect, useState } from "react";
+import { applicationReturnHref } from "@/lib/admin-navigation";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,6 +23,8 @@ interface BreadcrumbWithCustomSeparatorProps {
 }
 
 export default function BreadcrumbWithCustomSeparator({ breadCrumLinks }: BreadcrumbWithCustomSeparatorProps) {
+  const [returnHref, setReturnHref] = useState("/admin/applications");
+  useEffect(() => setReturnHref(applicationReturnHref(new URLSearchParams(window.location.search).get("from"))), []);
   // Filter links by position
   const startLink = breadCrumLinks.find(link => link.position === "start") || {
     label: "Dashboard",
@@ -30,42 +34,14 @@ export default function BreadcrumbWithCustomSeparator({ breadCrumLinks }: Breadc
   const middleLinks = breadCrumLinks.filter(link => link.position === "middle");
   const endLink = breadCrumLinks.find(link => link.position === "end");
 
+  const links = [startLink, ...middleLinks, ...(endLink ? [endLink] : [])];
   return (
     <Breadcrumb>
-      <BreadcrumbList className="container mx-auto py-2 px-4 flex items-center justify-start w-full">
-        {/* Start Link (Dashboard) */}
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link className="hover:text-black" href={startLink.link}>{startLink.label}</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-
-        {/* Middle Links */}
-        {middleLinks.length > 0 && (
-          <div className="flex items-center">
-            <BreadcrumbSeparator />
-            {middleLinks.map((link, index) => (
-              <div key={index} className="flex items-center pl-2 gap-2">
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link href={link.link}>{link.label}</Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                {index < middleLinks.length - 1 && <BreadcrumbSeparator />}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* End Link */}
-        {endLink && (
-          <>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage className="text-black">{endLink.label}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </>
-        )}
+      <BreadcrumbList className="container mx-auto flex w-full flex-wrap items-center justify-start px-4 py-4 text-sm">
+        {links.map((link,index) => <Fragment key={`${link.label}-${index}`}>
+          {index > 0 && <BreadcrumbSeparator />}
+          <BreadcrumbItem>{index === links.length - 1 ? <BreadcrumbPage className="text-slate-800">{link.label}</BreadcrumbPage> : <BreadcrumbLink asChild><Link href={link.link === "/admin/applications" ? returnHref : link.link}>{link.label}</Link></BreadcrumbLink>}</BreadcrumbItem>
+        </Fragment>)}
       </BreadcrumbList>
     </Breadcrumb>
   );

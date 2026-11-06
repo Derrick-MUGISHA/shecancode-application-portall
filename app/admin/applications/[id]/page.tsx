@@ -27,6 +27,7 @@ export default async function ApplicationDetailsPage({ params }: { params: Promi
       },
       include: {
         course: true,
+        cohort: true,
       },
     })
 
@@ -38,7 +39,7 @@ export default async function ApplicationDetailsPage({ params }: { params: Promi
       <div className="min-h-screen flex flex-col">
         <AdminHeader />
         <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} />
-        <main className="flex-1 container mx-auto py-8 px-4">
+        <main className="flex-1 container mx-auto py-4 px-4">
           <ApplicationDetails application={application} emails={emails}/>
         </main>
       </div>

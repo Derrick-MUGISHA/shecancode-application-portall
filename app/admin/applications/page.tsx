@@ -30,6 +30,13 @@ export default async function AdminApplicationsPage({ searchParams }: AdminAppli
     search: getSearchParam(params, "search"),
     status: getSearchParam(params, "status") || "ALL",
     course: getSearchParam(params, "course") || "ALL",
+    cohort: getSearchParam(params, "cohort") || "ALL",
+    year: getSearchParam(params, "year") || "ALL",
+    from: /^\d{4}-\d{2}-\d{2}$/.test(getSearchParam(params, "from")) ? getSearchParam(params, "from") : "",
+    to: /^\d{4}-\d{2}-\d{2}$/.test(getSearchParam(params, "to")) ? getSearchParam(params, "to") : "",
+    sort: ["newest","oldest","name","cohort","course","status"].includes(getSearchParam(params,"sort")) ? getSearchParam(params,"sort") : "newest",
+    page: Number(getSearchParam(params,"page")) || 1,
+    pageSize: Number(getSearchParam(params,"pageSize")) || 25,
   }
 
   return (

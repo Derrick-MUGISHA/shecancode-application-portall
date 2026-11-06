@@ -1,13 +1,13 @@
 "use client"
 
-import { Application, Course } from "@prisma/client"
+import type { AdminApplication } from "@/lib/admin-application-types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 
 interface ApplicationSummaryProps {
-  application: Application & { course: Course | null }
+  application: AdminApplication
 }
 
 const statusColors: Record<string, string> = {
@@ -34,7 +34,7 @@ export default function ApplicationSummary({ application }: ApplicationSummaryPr
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl">
       <CardHeader>
         <CardTitle>Application Summary</CardTitle>
       </CardHeader>
@@ -46,6 +46,10 @@ export default function ApplicationSummary({ application }: ApplicationSummaryPr
         <div>
           <h3 className="text-sm font-medium text-muted-foreground">Course</h3>
           <p className="text-base">{application.course?.name || "Unknown"}</p>
+        </div>
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground">Cohort</h3>
+          <p className="text-base">{application.cohort ? `cohort-${application.cohort.number}` : application.cohortLabel || application.course?.cohortLabel || "Data not available"}</p>
         </div>
         <div>
           <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
