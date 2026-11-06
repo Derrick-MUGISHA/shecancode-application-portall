@@ -32,3 +32,9 @@ export function selectedAvailability<T extends ProgramAvailability & {cohorts?: 
   const cohort=program.cohorts.find(item=>item.id===cohortId)
   return cohort ? {...cohort,isOpen:program.isOpen!==false && cohort.isOpen!==false} : undefined
 }
+
+export function visibleAdminCohorts<T extends ProgramAvailability>(program:{isOpen?:boolean;cohorts?:T[]},openOnly:boolean,now=Date.now()):T[] {
+  const cohorts=program.cohorts||[]
+  if(!openOnly)return cohorts
+  return program.isOpen===false?[]:cohorts.filter(cohort=>acceptingApplications(cohort,now))
+}

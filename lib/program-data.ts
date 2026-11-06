@@ -5,7 +5,7 @@ import { availableProgram, cohortLabel } from "./cohorts"
 import type { Program } from "./program-types"
 
 export const PROGRAM_CACHE_TAG = "application-programs"
-const readCachedPrograms = unstable_cache(async()=>{
+export async function readProgramsFresh(){
   const courses=await prisma.course.findMany({include:{cohorts:{include:{_count:{select:{applications:true}}},orderBy:{number:"asc"}},_count:{select:{applications:true}}},orderBy:{name:"asc"}})
   return courses.map(course=>({
     id:course.id,createdAt:course.createdAt?.toISOString(),requiresCohort:course.requiresCohort,name:course.name,description:course.description,isOpen:course.isOpen,
@@ -13,7 +13,8 @@ const readCachedPrograms = unstable_cache(async()=>{
     applicationCount:course._count.applications,spacesLeft:remainingSpaces(course),
     cohorts:(course.cohorts || []).map(cohort=>({id:cohort.id,number:cohort.number,cohortLabel:cohortLabel(cohort.number),capacity:cohort.capacity,closesAt:cohort.closesAt?.toISOString()??null,isOpen:cohort.isOpen,applicationCount:cohort._count.applications,spacesLeft:remainingSpaces(cohort)})),
   }))
-},["application-programs-v2"],{revalidate:30,tags:[PROGRAM_CACHE_TAG]})
+}
+const readCachedPrograms = unstable_cache(readProgramsFresh,["application-programs-v3"],{revalidate:5,tags:[PROGRAM_CACHE_TAG]})
 export async function getAllPreloadedPrograms(): Promise<Program[]> {
   const programs=await readCachedPrograms()
   const serverTime=new Date().toISOString()

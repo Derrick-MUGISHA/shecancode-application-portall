@@ -3,6 +3,8 @@ import type { PrismaClient, Prisma } from "@prisma/client"
 import { acceptingApplications } from "./program-availability"
 import { cohortLabel } from "./cohorts"
 
+export class EntrySessionUnavailableError extends Error {}
+
 export class ProgramUnavailableError extends Error {
   constructor(message:string, public field: "courseId" | "cohortId" = "courseId") { super(message) }
 }
@@ -11,6 +13,10 @@ export async function createApplicationWithAvailability(prisma: PrismaClient, da
   for (let attempt=0;attempt<3;attempt++) {
     try {
       return await prisma.$transaction(async tx=>{
+        if(data.entryGrantId){
+          const reserved=await tx.applicationEntry.updateMany({where:{id:data.entryGrantId,submittedAt:null,expiresAt:{gt:new Date()}},data:{submittedAt:new Date()}})
+          if(reserved.count!==1)throw new EntrySessionUnavailableError("Your entry session has expired or was already used. Start again from the program website.")
+        }
         const course=await tx.course.findUnique({where:{id:data.courseId!},include:{_count:{select:{applications:true,cohorts:true}}}})
         if (!course || course.isOpen===false) throw new ProgramUnavailableError("This program is no longer accepting applications.")
         if (course.requiresCohort || course._count?.cohorts>0) {

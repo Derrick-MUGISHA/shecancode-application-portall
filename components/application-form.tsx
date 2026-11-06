@@ -14,6 +14,8 @@ import { toast } from "@/components/ui/use-toast"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatPhoneNumber } from "@/lib/phone"
 import { DRAFT_STORAGE_KEY, PROGRAM_STORAGE_KEY, encodeDraft, decodeDraft, encodeProgramCache, decodeProgramCache } from "@/lib/application-storage"
+import { loadDraftAttachment, saveDraftAttachment } from "@/lib/draft-attachment"
+import { validateEducationFile } from "@/lib/education-document"
 import { restoredApplicationStep } from "@/lib/application-progress"
 import { selectedAvailability, availableProgram } from "@/lib/cohorts"
 import { formSchema } from "@/lib/form-schema"
@@ -43,6 +45,10 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
   const lastProgramFetch = useRef(initialPrograms === undefined ? 0 : Date.now())
   const [courseError, setCourseError] = useState<string | null>(null)
   const [stepError, setStepError] = useState("")
+  const [attachmentDraftError, setAttachmentDraftError] = useState("")
+  const [attachmentDraftSaved, setAttachmentDraftSaved] = useState(false)
+  const attachmentSave = useRef<Promise<void>>(Promise.resolve())
+  const submitted = useRef(false)
   const [draftSaved, setDraftSaved] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
   const [storageUnavailable, setStorageUnavailable] = useState(false)
@@ -65,7 +71,7 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
     const request = (async () => {
       if (showLoading) { setCourseLoading(true); setCourseError(null) }
       try {
-        const response = await fetch("/api/courses?open=true", { signal: AbortSignal.timeout(60000) })
+        const response = await fetch("/api/courses?open=true", { signal: AbortSignal.timeout(60000), cache: "no-store" })
         if (!response.ok) throw new Error("Unable to load programs")
         storePrograms(await response.json())
         setCourseError(null)
@@ -85,6 +91,7 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
     if (initialPrograms !== undefined) {
       storePrograms(initialPrograms)
       setCourseLoading(false)
+      void fetchCourses(false)
     } else {
       let cached = null
       try {
@@ -101,11 +108,12 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
       }
     }
     const refresh = () => {
-      if (document.visibilityState === "visible" && Date.now() - lastProgramFetch.current >= 30000) void fetchCourses(false)
+      if (document.visibilityState === "visible" && Date.now() - lastProgramFetch.current >= 5000) void fetchCourses(false)
     }
-    const interval = setInterval(refresh, 30000)
+    const interval = setInterval(refresh, 5000)
     window.addEventListener("focus", refresh)
-    return () => { clearInterval(interval); window.removeEventListener("focus", refresh) }
+    document.addEventListener("visibilitychange", refresh)
+    return () => { clearInterval(interval); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh) }
   }, [fetchCourses, initialPrograms, storePrograms])
 
   // Initialize the form
@@ -201,7 +209,10 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
       }
 
       // Clear form data from localStorage after successful submission
+      submitted.current = true
       try { localStorage.removeItem(DRAFT_STORAGE_KEY) } catch { /* Submission succeeded even when storage is unavailable. */ }
+      // Delete the locally saved binary only after the server confirms submission.
+      try { await saveDraftAttachment(undefined) } catch { /* Do not turn a successful submission into a failure. */ }
 
       toast({
         title: "Application Submitted",
@@ -224,31 +235,54 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
   }
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_STORAGE_KEY)
-      const saved = raw ? decodeDraft(raw) : null
-      if (saved) {
-        const answers = saved.values
-        if (answers.dateOfBirth) answers.dateOfBirth = new Date(String(answers.dateOfBirth))
-        if (typeof answers.phone === "string") answers.phone = formatPhoneNumber(answers.phone)
-        if (typeof answers.emergencyContactPhone === "string") answers.emergencyContactPhone = formatPhoneNumber(answers.emergencyContactPhone)
-        form.reset({ ...form.getValues(), ...answers })
-        const restoredStep = restoredApplicationStep(answers, saved.step, initialStep, initialPrograms ?? [])
-        stepRef.current = restoredStep
-        setStep(restoredStep)
-        setDraftRestored(Boolean(answers.fullName || answers.email))
-        setDraftSaved(true)
-      }
-    } catch {
-      setStorageUnavailable(true)
-    } finally {
-      setDraftReady(true)
-    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const raw = localStorage.getItem(DRAFT_STORAGE_KEY)
+        const saved = raw ? decodeDraft(raw) : null
+        if (saved) {
+          const answers = saved.values
+          if (answers.dateOfBirth) answers.dateOfBirth = new Date(String(answers.dateOfBirth))
+          if (typeof answers.phone === "string") answers.phone = formatPhoneNumber(answers.phone)
+          if (typeof answers.emergencyContactPhone === "string") answers.emergencyContactPhone = formatPhoneNumber(answers.emergencyContactPhone)
+          try {
+            const attachment = await loadDraftAttachment()
+            if (attachment) {
+              const problem = await validateEducationFile(attachment)
+              if (!problem) { answers.educationDocument = attachment; if (!cancelled) setAttachmentDraftSaved(true) }
+              else { await saveDraftAttachment(undefined); if (!cancelled) setAttachmentDraftError(problem) }
+            }
+          } catch { if (!cancelled) setAttachmentDraftError("Your attachment could not be restored. Please select it again.") }
+          if (cancelled) return
+          form.reset({ ...form.getValues(), ...answers })
+          const restoredStep = restoredApplicationStep(answers, saved.step, initialStep, initialPrograms ?? [])
+          stepRef.current = restoredStep
+          setStep(restoredStep)
+          setDraftRestored(Boolean(answers.fullName || answers.email))
+          setDraftSaved(true)
+        }
+      } catch { if (!cancelled) setStorageUnavailable(true) }
+      finally { if (!cancelled) setDraftReady(true) }
+    })()
+    return () => { cancelled = true }
   }, [form])
+
+  useEffect(() => {
+    if (!draftReady) return
+    const subscription = form.watch((values, event) => {
+      if (event.name !== "educationDocument" || submitted.current) return
+      setAttachmentDraftSaved(false)
+      const file = values.educationDocument as File | undefined
+      attachmentSave.current = saveDraftAttachment(file).then(() => {
+        setAttachmentDraftSaved(Boolean(file)); setAttachmentDraftError("")
+      }).catch(() => setAttachmentDraftError("This browser could not save your attachment. Keep this tab open or select it again after reloading."))
+    })
+    return () => subscription.unsubscribe()
+  }, [form, draftReady])
 
   const saveDraft = useCallback(() => {
     const values = form.getValues()
-    if (!values.courseId && !values.fullName && !values.email) return
+    if (submitted.current || (!values.courseId && !values.fullName && !values.email)) return
     try {
       localStorage.setItem(DRAFT_STORAGE_KEY, encodeDraft(values, stepRef.current))
       setDraftSaved(true)
@@ -370,7 +404,9 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
           {selectedProgram && step > 0 && <p className={styles.selectedProgram}><BookOpenLabel />{selectedProgram.name}{selectedCohortLabel ? ` · ${selectedCohortLabel}` : ""}</p>}
         </div>
 
-        {draftRestored && <p role="status" className={styles.draftNotice}>Welcome back. Your saved answers are restored at the first unfinished step. Re-enter your ID number and select attachments again when requested.</p>}
+        {draftRestored && <p role="status" className={styles.draftNotice}>Welcome back. Your saved answers are restored at the first unfinished step. Your attachment is restored when available. Re-enter your ID number when requested.</p>}
+        {attachmentDraftError && <p role="alert" className={styles.error}>{attachmentDraftError}</p>}
+        {attachmentDraftSaved && <p role="status" className={styles.saveNote}>Attachment saved in this device’s draft. You can resume after reloading.</p>}
         <Form {...form}>
           <form noValidate aria-labelledby="application-step-title" aria-busy={isSubmitting} onSubmit={(event) => {
             if (step < 3) { event.preventDefault(); continueStep() }
@@ -409,7 +445,7 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
             </div>
             <p role="status" className={styles.saveNote}>
               {storageUnavailable ? "Draft saving is unavailable. Keep this page open to retain your answers." :
-                draftSaved ? "Draft saved on this device. ID numbers and attachments are not saved." :
+                draftSaved ? "Draft saved on this device. ID numbers are not stored." :
                 "Complete one step at a time. You can go back without losing your answers."}
             </p>
           </form>

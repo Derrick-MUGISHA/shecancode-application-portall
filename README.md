@@ -51,11 +51,14 @@ Applicants choose an open program, complete personal/contact details, enter thei
 education and background, then review and submit. Each step validates independently;
 the server validates the full application and rejects closed programs. Back navigation
 retains answers and the selected file. Browser drafts resume at the first unfinished step after revalidating saved answers.
-ID numbers and attachments are excluded from local storage and must be re-entered
-when resuming. The URL records the current step but cannot unlock later steps. Desktop step
+ID numbers are excluded from local storage and must be re-entered when resuming.
+Attachments are stored separately as binary files in IndexedDB on the same browser
+and device, revalidated when restored, and deleted from the draft after successful
+submission or removal. Browser storage restrictions can prevent saving; the form
+shows an error if that happens. The URL records the current step but cannot unlock later steps. Desktop step
 navigation sits outside the form, at the left of the page, and stays visible while
 scrolling; the form is centered independently. Programs are preloaded on the server
-and cached for 30 seconds, with a browser cache fallback and background updates.
+and cached briefly, with a browser cache fallback and background updates.
 Attachments use a large native file picker and are checked for size, type and file
 signature before being accepted. Identity validation checks format, not registry records.
 
@@ -119,8 +122,9 @@ saving, and server validation remains authoritative.
 
 The homepage prefetches the application route, and admin navigation prefetches its
 linked pages. Programs and cohorts are included in the server-rendered application
-and admin program pages. The shared tagged cache refreshes every 30 seconds and is
-invalidated when programs, cohorts, or submissions change. Admin lists keep their
+and admin program pages. The initial server-rendered data uses a five-second tagged cache. Live API requests
+bypass that cache and browser/CDN caches, so database edits appear without a
+redeployment. Visible pages poll every five seconds and refresh on focus. Admin lists keep their
 current content visible while refreshing in the background or on window focus.
 Portal cards show up to three per row on larger screens, with cohort/status at the
 top, program name centered, and capacity/closing time below (no countdown shown).
@@ -129,10 +133,34 @@ Admin navigation highlights the current section on nested detail routes. Applica
 detail tabs and return links preserve the selected view and filtered list URL.
 Education attachments have separate Preview and Download buttons. PDF, JPG and PNG
 can be viewed in a modal; both operations use the existing authenticated attachment
-endpoint. Preview URLs are released when closed, and file contents are never stored
-in browser local storage. Unsupported formats offer download without rendering HTML.
+endpoint. Preview URLs are released when closed, and preview URLs are not stored in browser local storage. Draft attachments use
+IndexedDB separately and are only uploaded on submission. Unsupported formats offer download without rendering HTML.
 
 The cohort number editor is one input displaying the full label, such as `cohort-18`.
 Applicant detail sections use a shared, self-contained layout and Prisma relation
 payload type; regenerate Prisma and restart the editor TypeScript server after schema
 changes if it still reports an old generated model.
+
+
+The admin program manager has an **Open cohorts only** focus toggle that hides
+closed, expired, full cohorts and hidden programs. Edit/delete actions remain visible;
+cohorts containing applications must be closed instead of deleted. **Hide details**
+on the application list/detail screen masks values on screen; exported files are
+unchanged. Masking is a presentation control for authorized admins, not access control.
+
+Database content updates propagate through the runtime API within roughly five
+seconds while the page is visible. Frontend code/design changes still require a
+normal deployment. The deployment must run Next.js server/API routes rather than a
+static HTML export, and connect to the intended MongoDB database.
+
+### Application workspace updates
+
+- Applications has an **Open cohorts** focus toggle. It limits the table, analytics and export to cohorts that are open, not full and not past their deadline; the filter stays in the URL.
+- Applicant answers can be edited from the detail page. The authenticated endpoint validates only changed answers, normalizes email/phone/ID formats and rejects stale saves. Program/cohort assignments, attachments and review decisions remain separate.
+- Public program cards show a static cohort label, program, status and closing date; closed/full cohorts are excluded. Family/equipment questions use standard native checkboxes with linked labels.
+- Applications refresh quietly in the background. Detail views refresh while reading, pausing while editing or reviewing so typed changes are retained.
+- Submission-trend bars explain their month/count on hover or keyboard focus. Email and telephone values open mail/call handlers. Bulk updates explain when every selected record already has the chosen status.
+
+### Secure website entry
+
+The application form and submission API now require a one-time encrypted website entry link, redeemed into a 24-hour private browser session. Verified source domain/page/time are saved with each application and shown in admin records and analytics. See [integration setup and rollout](integrations/APPLICATION-ENTRY.md) for the required environment variables, the two connected website repositories, production rollout and `/entry/development` testing. Do not deploy the gate without configuring the website endpoints and matching server-only secrets.

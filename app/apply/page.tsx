@@ -1,3 +1,7 @@
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import { entrySessionFromCookie } from "@/lib/entry-session"
+import { ENTRY_COOKIE } from "@/lib/entry-token"
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
@@ -9,12 +13,16 @@ import { applicationStepFromQuery } from "@/lib/application-storage"
 import { getPreloadedPrograms } from "@/lib/program-data"
 import styles from "./apply.module.css"
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Apply - Applicant Registration System",
   description: "Submit your application for our courses",
 }
 
 export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
+  const entry=await entrySessionFromCookie((await cookies()).get(ENTRY_COOKIE)?.value)
+  if(!entry)redirect("/entry/required")
   const query = await searchParams
   const initialStep = query.step === undefined ? undefined : applicationStepFromQuery(query.step)
   const initialPrograms = await getPreloadedPrograms().catch(() => undefined)
@@ -45,6 +53,7 @@ export default async function ApplyPage({ searchParams }: { searchParams: Promis
           <div className={styles.applicationLayout}>
             <aside id="application-step-navigation" className={styles.stepSidebar} aria-label="Application steps" />
             <main id="application-content" tabIndex={-1} className={styles.panel} aria-labelledby="application-title">
+              <p className="mb-5 text-center text-sm text-slate-600">You arrived from <strong>{entry.sourceDomain}</strong></p>
               <ApplicationForm initialPrograms={initialPrograms} initialStep={initialStep} />
             </main>
           </div>

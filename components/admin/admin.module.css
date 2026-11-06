@@ -73,3 +73,12 @@
 .cohortArea td { background: #fff; }
 
 .detailScope :global([role="tabpanel"]) h3 { font-size: 14px; }
+
+.trendBar { cursor: help; border-radius: 4px; }
+.trendBar:hover, .trendBar:focus-visible { background: #edf5fc; outline: 2px solid #52768f; outline-offset: 2px; }
+.trend small { text-align: center; line-height: 1.3; }
+
+.selection { align-items: end; padding: 18px; gap: 14px; }
+.selection > strong { align-self: center; margin-right: 8px; }
+.selection > div { min-width: 220px; }
+.selection button { min-height: 44px; }

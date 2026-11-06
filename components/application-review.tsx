@@ -4,6 +4,7 @@ import { Pencil } from "lucide-react"
 import type { z } from "zod"
 import type { formSchema } from "@/lib/form-schema"
 import { formatPhoneNumber } from "@/lib/phone"
+import { formatIdentificationNumber } from "@/lib/identity-format"
 import styles from "./application-wizard.module.css"
 
 type Values = z.infer<typeof formSchema>
@@ -25,7 +26,7 @@ export default function ApplicationReview({ values, programName, cohortLabel, on
     { step: 1, title: "About you", preview: [values.fullName, values.email].filter(Boolean).join(" · "), rows: [
       ["Full name", values.fullName], ["Email", values.email], ["Date of birth", values.dateOfBirth],
       ["Gender", readable(values.gender)], ["Phone", formatPhoneNumber(values.phone || "")], ["Nationality", values.nationality],
-      ["Refugee status", values.refugeeStatus], [values.refugeeStatus ? "Refugee registration number" : "ID number", values.identificationNumber],
+      ["Refugee status", values.refugeeStatus], [values.refugeeStatus ? "Refugee registration number" : "ID number", formatIdentificationNumber(values.identificationNumber || "", values.nationality, values.refugeeStatus)],
       ["Has a disability", values.hasDisability], ...(values.hasDisability ? [["Disability type", readable(values.disabilityType)], ["Disability details", values.disabilityDetails]] as [string, unknown][] : []),
       ["Province", values.province], ["District", values.district], ["Sector", values.sector], ["Cell", values.cell], ["Village", values.village],
       ["Emergency contact", values.emergencyContactName], ["Relationship", values.emergencyContactRelation], ["Emergency phone", formatPhoneNumber(values.emergencyContactPhone || "")],

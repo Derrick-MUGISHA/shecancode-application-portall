@@ -4,10 +4,14 @@ import { revalidateTag } from "next/cache"
 import { PROGRAM_CACHE_TAG } from "@/lib/program-data"
 import { formSchema } from "@/lib/form-schema"
 import { validateRwandaAddress } from "@/lib/rwanda-locations"
-import { createApplicationWithAvailability, ProgramUnavailableError } from "@/lib/create-application"
+import { createApplicationWithAvailability, ProgramUnavailableError, EntrySessionUnavailableError } from "@/lib/create-application"
+import { canDownloadEducationDocument } from "@/lib/verify-document-admin"
+import { readEntrySession } from "@/lib/entry-session"
+import { ENTRY_COOKIE, entryCookieOptions } from "@/lib/entry-token"
 import { matchesDocumentType } from "@/lib/education-document"
 
-export async function GET() {
+export async function GET(request:Request) {
+  if(!await canDownloadEducationDocument(request))return NextResponse.json({message:"Administrator sign-in required"},{status:401})
   try {
     const applications = await prisma.application.findMany({
       include: {
@@ -27,6 +31,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const entry=await readEntrySession(request)
+    if(!entry)return NextResponse.json({message:"Start your application from an approved program website. Your entry link is missing, expired or already used."},{status:403})
     // Keep the whole request below hosting request-size limits.
     if (Number(request.headers.get("content-length")) > 3 * 1024 * 1024) {
       return NextResponse.json({ message: "Application is too large. Attach a file of 2 MB or smaller." }, { status: 413 })
@@ -66,6 +72,11 @@ export async function POST(request: Request) {
     // database round trip before every submission.
     // Create application
     const application = await createApplicationWithAvailability(prisma, {
+        entryGrantId: entry.id,
+        entrySource: entry.source,
+        entrySourceUrl: entry.sourceUrl,
+        entrySourceDomain: entry.sourceDomain,
+        entryIssuedAt: entry.issuedAt,
         fullName: body.fullName,
         email: body.email,
         dateOfBirth: new Date(body.dateOfBirth),
@@ -119,8 +130,11 @@ export async function POST(request: Request) {
     })
 
     revalidateTag(PROGRAM_CACHE_TAG, { expire: 0 })
-    return NextResponse.json({ id: application.id }, { status: 201 })
+    const response=NextResponse.json({ id: application.id }, { status: 201 })
+    response.cookies.set(ENTRY_COOKIE,"",{...entryCookieOptions(),maxAge:0})
+    return response
   } catch (error) {
+    if (error instanceof EntrySessionUnavailableError)return NextResponse.json({message:error.message},{status:403})
     if (error instanceof ProgramUnavailableError) return NextResponse.json({ message: error.message, errors: { [error.field]: [error.message] } }, { status: 400 })
     if (error && typeof error === "object" && "code" in error && error.code === "P2002") return NextResponse.json({ message: "An application with this email already exists", errors: { email: ["An application with this email already exists"] } }, { status: 400 })
     console.error("Error creating application:", error)
