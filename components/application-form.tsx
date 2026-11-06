@@ -233,7 +233,7 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
         if (typeof answers.phone === "string") answers.phone = formatPhoneNumber(answers.phone)
         if (typeof answers.emergencyContactPhone === "string") answers.emergencyContactPhone = formatPhoneNumber(answers.emergencyContactPhone)
         form.reset({ ...form.getValues(), ...answers })
-        const restoredStep = restoredApplicationStep(answers, saved.step, initialStep, initialPrograms)
+        const restoredStep = restoredApplicationStep(answers, saved.step, initialStep, initialPrograms ?? [])
         stepRef.current = restoredStep
         setStep(restoredStep)
         setDraftRestored(Boolean(answers.fullName || answers.email))
