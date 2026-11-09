@@ -34,7 +34,7 @@ The confirmed repository `/home/derrick/Documents/GitHub/Work/igirerwanda-fe` ha
 
 - `src/app/api/application-entry/route.ts` (copy retained here as `igire-entry-route.ts`).
 - `src/app/programs/[slug]/page.tsx` rewrites existing Apply hrefs using `src/lib/portal-entry-links.ts`, preserving their styling and labels. The links navigate in the current tab to `GET /api/application-entry?program=<slug>`, then to the portal; this avoids blocking by Igire’s existing `form-action self` policy. Closed-enrollment notices are preserved.
-- Every GET navigation mints a fresh token without redeeming it or writing a session. Link previews cannot consume the token; only the portal confirmation POST does so. The previous POST endpoint remains available for compatible clients.
+- The website GET endpoint mints a fresh token without redeeming it or writing a session. The portal validates the link and automatically submits the same-origin redemption POST, then redirects straight to the application form. There is no confirmation click. Ordinary link fetches do not redeem the token. The website POST endpoint remains available for compatible clients.
 - Local ignored `.env.local` has the server secret and local portal origin. Production must receive these through its hosting environment settings.
 
 Allowed sources:
@@ -68,7 +68,7 @@ If another source website is not Next.js, its server must implement the equivale
 
 ## Local development
 
-With the portal running on `http://localhost:3000`, open `/entry/development`, press **Create test entry**, then **Continue to application**. This uses the same encrypted token, replay check, session and submission path. Its source is explicitly **Local development**. The page and issuer return 404 outside `NODE_ENV=development`, including production builds. It also requires a localhost request and matching origin.
+Set `APPLICATION_PORTAL_URL="http://localhost:3000"` in `.env.local` (use the actual local port), run the portal in development, and open `/apply`. A local session is created automatically and the form opens without entry or confirmation screens. `/entry/development` remains a local-only automatic bootstrap, not a manual generator. This uses the same encrypted token, replay check, session and submission path. Its source is explicitly **Local development**. The page and issuer require `NODE_ENV=development`, a loopback portal hostname, and a request matching the configured origin; production builds cannot issue or accept development entries. Valid website links also redeem automatically through the existing POST endpoint and open the application directly.
 
 For the Igire local website, use port 3001 (SheCanCode can use 3002) to avoid the portal's port 3000. Start Next directly (`next dev -p 3001`) using that project's installed dependencies; its existing startup hook is unrelated to this integration and was not executed or modified here.
 

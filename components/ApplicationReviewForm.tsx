@@ -1,5 +1,8 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
+import { ADMIN_APPLICATIONS_KEY } from "@/hooks/use-admin-applications"
+
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -67,6 +70,7 @@ export default function ApplicationReviewForm({ application, emails }: Applicati
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -114,6 +118,7 @@ export default function ApplicationReviewForm({ application, emails }: Applicati
     })
 
     if (result.success) {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_APPLICATIONS_KEY })
       router.refresh()
     }
     setIsSubmitting(false)

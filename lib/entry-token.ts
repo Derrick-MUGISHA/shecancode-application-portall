@@ -17,6 +17,14 @@ export function portalOrigin(){
   if(process.env.NODE_ENV!=="development"&&url.protocol!=="https:")throw Error("The production application portal must use HTTPS.")
   return url.origin
 }
+export function isLocalDevelopmentPortal(){
+  if(process.env.NODE_ENV!=="development")return false
+  try{return ["localhost","127.0.0.1","[::1]"].includes(new URL(portalOrigin()).hostname)}catch{return false}
+}
+export function isLocalDevelopmentRequest(requestUrl:string){
+  if(!isLocalDevelopmentPortal())return false
+  try{return new URL(requestUrl).origin===portalOrigin()}catch{return false}
+}
 export function entryCookieOptions(){return {httpOnly:true,secure:process.env.NODE_ENV!=="development",sameSite:"lax" as const,path:"/",maxAge:ENTRY_SESSION_TTL}}
 export function digestEntrySecret(value:string){return createHash("sha256").update(value).digest("hex")}
 export function authenticateEntrySource(source:EntrySource,authorization:string|null){
@@ -26,7 +34,7 @@ export function authenticateEntrySource(source:EntrySource,authorization:string|
   return !!expected&&expected.length>=32&&!!supplied&&timingSafeEqual(Buffer.from(digestEntrySecret(expected),"hex"),Buffer.from(digestEntrySecret(supplied),"hex"))
 }
 export function issueEntryToken(source:EntrySource,now=Math.floor(Date.now()/1000)){
-  if(source==="development"&&process.env.NODE_ENV!=="development")throw Error("Development entry is disabled.")
+  if(source==="development"&&!isLocalDevelopmentPortal())throw Error("Development entry is disabled.")
   const url=source==="development"?`${portalOrigin()}/entry/development`:ENTRY_SOURCES[source].url
   const payload={v:1,source,url,domain:new URL(url).hostname,iat:now,exp:now+ENTRY_TOKEN_TTL,aud:portalOrigin(),nonce:randomBytes(32).toString("base64url")}
   const iv=randomBytes(12),cipher=createCipheriv("aes-256-gcm",key(),iv)
@@ -44,7 +52,7 @@ export function verifyEntryToken(token:string,now=Math.floor(Date.now()/1000)){
   decipher.setAAD(aad);decipher.setAuthTag(tag)
   const data=JSON.parse(Buffer.concat([decipher.update(Buffer.from(parts[2],"base64url")),decipher.final()]).toString("utf8"))
   if(data.v!==1||!isEntrySource(data.source)||data.aud!==portalOrigin()||typeof data.iat!=="number"||typeof data.exp!=="number"||!Number.isInteger(data.iat)||!Number.isInteger(data.exp)||data.iat>now+30||data.exp<=now||data.exp-data.iat!==ENTRY_TOKEN_TTL||typeof data.nonce!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(data.nonce))throw Error("This entry link has expired or is invalid.")
-  if(data.source==="development"&&process.env.NODE_ENV!=="development")throw Error("Development entry is disabled.")
+  if(data.source==="development"&&!isLocalDevelopmentPortal())throw Error("Development entry is disabled.")
   const source=data.source as EntrySource
   const url=source==="development"?`${portalOrigin()}/entry/development`:ENTRY_SOURCES[source].url
   if(data.url!==url||data.domain!==new URL(url).hostname)throw Error("Invalid entry website.")

@@ -1,15 +1,18 @@
 "use client"
 
+import type { ReactNode } from "react"
+import styles from "./admin/admin.module.css"
 import { useAdminPrivacy } from "./admin/privacy-context"
 import type { AdminApplication } from "@/lib/admin-application-types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import ContactLink from "./contact-link"
-import { Separator } from "@/components/ui/separator"
+import ProfileAvatar from "./admin/profile-avatar"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 
 interface ApplicationSummaryProps {
   application: AdminApplication
+  actions?: ReactNode
 }
 
 const statusColors: Record<string, string> = {
@@ -25,69 +28,33 @@ const statusColors: Record<string, string> = {
   NEEDS_FOLLOW_UP: "bg-pink-100 text-pink-800",
 }
 
-export default function ApplicationSummary({ application }: ApplicationSummaryProps) {
-  const hidden=useAdminPrivacy()
-  if(hidden)return <Card className="rounded-2xl"><CardHeader><CardTitle>Application Summary</CardTitle></CardHeader><CardContent><p className="text-sm text-slate-500">Applicant details hidden on screen.</p></CardContent></Card>
-  const getStatusBadge = (status: string) => {
-    const colorClass = statusColors[status] || "bg-gray-100 text-gray-800"
-    return (
-      <Badge className={colorClass} variant="outline">
-        {status.replace(/_/g, " ")}
-      </Badge>
-    )
-  }
-
+export default function ApplicationSummary({ application, actions }: ApplicationSummaryProps) {
+  const hidden = useAdminPrivacy()
+  const fields: { label: string; value: ReactNode }[] = [
+    { label: "Applicant", value: <span className="flex items-center gap-2"><ProfileAvatar id={application.id} size={28} /><span>{application.fullName}</span></span> },
+    { label: "Program", value: application.course?.name || "Unknown" },
+    { label: "Cohort", value: application.cohort ? `cohort-${application.cohort.number}` : application.cohortLabel || application.course?.cohortLabel || "Data not available" },
+    { label: "Status", value: <Badge className={`${styles.summaryStatus} ${statusColors[application.status] || "bg-gray-100 text-gray-800"}`} variant="outline">{application.status.replace(/_/g, " ")}</Badge> },
+    { label: "Applied", value: format(new Date(application.createdAt), "d MMM yyyy") },
+    ...(application.interviewDate ? [{ label: "Interview", value: format(new Date(application.interviewDate), "d MMM yyyy") }] : []),
+    ...(application.decisionDate ? [{ label: "Decision", value: format(new Date(application.decisionDate), "d MMM yyyy") }] : []),
+    ...(application.technicalInterviewMarks != null ? [{ label: "Technical marks", value: `${application.technicalInterviewMarks}/100` }] : []),
+    { label: "Entry website", value: application.entrySourceDomain || "Data not available" },
+    { label: "Email", value: <ContactLink value={application.email} kind="email" /> },
+    { label: "Phone", value: <ContactLink value={application.phone} kind="phone" /> },
+  ]
   return (
-    <Card className="rounded-2xl">
-      <CardHeader>
-        <CardTitle>Application Summary</CardTitle>
+    <Card className={styles.summaryCard}>
+      <CardHeader className={styles.summaryHeader}>
+        <CardTitle className="text-base">Application summary</CardTitle>
+        <div className={styles.summaryActions}>{actions}</div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground">Applicant</h3>
-          <p className="text-base font-medium">{application.fullName}</p>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground">Course</h3>
-          <p className="text-base">{application.course?.name || "Unknown"}</p>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground">Cohort</h3>
-          <p className="text-base">{application.cohort ? `cohort-${application.cohort.number}` : application.cohortLabel || application.course?.cohortLabel || "Data not available"}</p>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground">Status</h3>
-          <div className="pt-1">{getStatusBadge(application.status)}</div>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground">Date Applied</h3>
-          <p className="text-base">{format(new Date(application.createdAt), "PPP")}</p>
-        </div>
-        {application.interviewDate && (
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Interview Date</h3>
-            <p className="text-base">{format(new Date(application.interviewDate), "PPP")}</p>
-          </div>
+      <CardContent className={styles.summaryContent}>
+        {hidden ? <p className="py-2 text-sm text-slate-500">Applicant details hidden on screen.</p> : (
+          <dl className={styles.summaryFields}>
+            {fields.map(({ label, value }) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+          </dl>
         )}
-        {application.decisionDate && (
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Decision Date</h3>
-            <p className="text-base">{format(new Date(application.decisionDate), "PPP")}</p>
-          </div>
-        )}
-        {application.technicalInterviewMarks !== null && (
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Technical Interview Marks</h3>
-            <p className="text-base">{application.technicalInterviewMarks}/100</p>
-          </div>
-        )}
-        <div><h3 className="text-sm font-medium text-muted-foreground">Entry website</h3><p className="text-base">{application.entrySourceDomain || "Data not available"}</p></div>
-        <Separator />
-        <div>
-          <h3 className="text-sm font-medium text-muted-foreground">Contact</h3>
-          <p className="text-base">{<ContactLink value={application.email} kind="email"/>}</p>
-          <p className="text-base">{<ContactLink value={application.phone} kind="phone"/>}</p>
-        </div>
       </CardContent>
     </Card>
   )

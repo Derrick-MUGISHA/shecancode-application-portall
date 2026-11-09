@@ -1,7 +1,7 @@
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { entrySessionFromCookie } from "@/lib/entry-session"
-import { ENTRY_COOKIE } from "@/lib/entry-token"
+import { ENTRY_COOKIE, isLocalDevelopmentPortal, portalOrigin } from "@/lib/entry-token"
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
@@ -22,7 +22,10 @@ export const metadata: Metadata = {
 
 export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
   const entry=await entrySessionFromCookie((await cookies()).get(ENTRY_COOKIE)?.value)
-  if(!entry)redirect("/entry/required")
+  if(!entry){
+    const local = isLocalDevelopmentPortal() && (await headers()).get("host") === new URL(portalOrigin()).host
+    redirect(local ? "/entry/development" : "/entry/required")
+  }
   const query = await searchParams
   const initialStep = query.step === undefined ? undefined : applicationStepFromQuery(query.step)
   const initialPrograms = await getPreloadedPrograms().catch(() => undefined)

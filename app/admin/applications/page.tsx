@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import ApplicationList from "@/components/admin/application-list"
 import AdminHeader from "@/components/admin/admin-header"
-import { fetchApplications } from "@/lib/actions"
 import BreadcrumbWithCustomSeparator, { BreadCrumLinkTypes } from "@/components/BreadcrumbWithCustomSeparator"
 import AdminProtectedRoute from "@/components/AdminProtectedRoute"
 
@@ -26,7 +25,6 @@ const getSearchParam = (params: Record<string, string | string[] | undefined>, k
 }
 
 export default async function AdminApplicationsPage({ searchParams }: AdminApplicationsPageProps) {
-  const initialData = await fetchApplications();
   const params = searchParams ? await searchParams : {}
   const initialFilters = {
     search: getSearchParam(params, "search"),
@@ -45,14 +43,14 @@ export default async function AdminApplicationsPage({ searchParams }: AdminAppli
   return (
     <AdminProtectedRoute>
     <div className="min-h-screen flex flex-col">
-      <AdminHeader />
-      <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} />
-      <main className="flex-1 container mx-auto py-8 px-4">
+       <AdminHeader />
+      {/* <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} /> */}
+      <main id="admin-main" tabIndex={-1} className="flex-1 w-full min-w-0 py-8 px-4">
         {/* <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-gray-700">Applications</h1>
           <p className="text-muted-foreground pt-2">View and manage all applicant applications</p>
         </div> */}
-        <ApplicationList initialData={initialData} initialFilters={initialFilters} />
+        <ApplicationList initialFilters={initialFilters} restoreView={Object.keys(params).length === 0} />
       </main>
       </div>
       </AdminProtectedRoute>

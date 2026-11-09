@@ -43,8 +43,8 @@ export default async function EmailDetailsPage({ params }: { params: { id: strin
     return (
       <div className="min-h-screen flex flex-col">
         <AdminHeader />
-        <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} />
-        <main className="flex-1 container mx-auto py-8 px-4">
+        {/* <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} /> */}
+        <main id="admin-main" tabIndex={-1} className="flex-1 w-full min-w-0 py-8 px-4">
           <EmailDetails email={email} courses={courses} />
           <Toaster />
         </main>

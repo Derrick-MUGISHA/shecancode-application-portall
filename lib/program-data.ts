@@ -11,10 +11,10 @@ export async function readProgramsFresh(){
     id:course.id,createdAt:course.createdAt?.toISOString(),requiresCohort:course.requiresCohort,name:course.name,description:course.description,isOpen:course.isOpen,
     cohortLabel:course.cohortLabel,capacity:course.capacity,closesAt:course.closesAt?.toISOString()??null,
     applicationCount:course._count.applications,spacesLeft:remainingSpaces(course),
-    cohorts:(course.cohorts || []).map(cohort=>({id:cohort.id,number:cohort.number,cohortLabel:cohortLabel(cohort.number),capacity:cohort.capacity,closesAt:cohort.closesAt?.toISOString()??null,isOpen:cohort.isOpen,applicationCount:cohort._count.applications,spacesLeft:remainingSpaces(cohort)})),
+    cohorts:(course.cohorts || []).map(cohort=>({id:cohort.id,createdAt:cohort.createdAt.toISOString(),number:cohort.number,cohortLabel:cohortLabel(cohort.number),capacity:cohort.capacity,closesAt:cohort.closesAt?.toISOString()??null,isOpen:cohort.isOpen,applicationCount:cohort._count.applications,spacesLeft:remainingSpaces(cohort)})),
   }))
 }
-const readCachedPrograms = unstable_cache(readProgramsFresh,["application-programs-v3"],{revalidate:5,tags:[PROGRAM_CACHE_TAG]})
+const readCachedPrograms = unstable_cache(readProgramsFresh,["application-programs-v4"],{revalidate:5,tags:[PROGRAM_CACHE_TAG]})
 export async function getAllPreloadedPrograms(): Promise<Program[]> {
   const programs=await readCachedPrograms()
   const serverTime=new Date().toISOString()

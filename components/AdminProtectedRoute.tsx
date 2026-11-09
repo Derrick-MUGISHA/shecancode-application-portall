@@ -1,10 +1,12 @@
 // components/AdminProtectedRoute.tsx
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { AdminAuthSkeleton } from "./admin/admin-skeletons";
 
 export default function AdminProtectedRoute({
   children,
@@ -12,12 +14,16 @@ export default function AdminProtectedRoute({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
+        setIsAuthenticated(false);
+        setIsLoading(true);
+        queryClient.removeQueries({queryKey:["admin"]});
         router.push('/admin/login');
         return;
       }
@@ -48,14 +54,10 @@ export default function AdminProtectedRoute({
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, queryClient]);
 
   if (isLoading || !isAuthenticated) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-      </div>
-    );
+    return <AdminAuthSkeleton />;
   }
 
   return <>{children}</>;
