@@ -1,0 +1,19 @@
+.loading { pointer-events: none; }
+.bones { width: 100%; }
+.fallback { width: 100%; position: relative; overflow: hidden; }
+.fallback i { display: block; position: absolute; background: #d7e3ee; animation: applicantSkeletonPulse 1.5s ease-in-out infinite; }
+.entry { width: 100%; max-width: 520px; margin-inline: auto; }
+.programs { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+.programCard { flex: 1 1 200px; max-width: 300px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
+.entryChoice { flex: 1 1 180px; padding: 16px; border: 1px solid #d4e0ed; border-radius: 12px; background: #ffffff75; }
+.fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 24px; }
+.fieldLoading { width: 100%; }
+.footer { margin-top: 28px; padding-top: 24px; border-top: 1px solid #e2e8f0; }
+.progress { display: flex; gap: 16px; justify-content: space-between; }
+.progressStep { display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.progressCircle { display: block; flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #d7e3ee; animation: applicantSkeletonPulse 1.5s ease-in-out infinite; }
+.progressLabel { width: 100%; }
+@keyframes applicantSkeletonPulse { 50% { opacity: .5; } }
+@media(min-width:1024px) { .progress { flex-direction: column; gap: 24px; } .progressStep { flex-direction: row; align-items: start; } .progressLabel { flex: 1; } }
+@media(max-width:600px) { .fields { grid-template-columns: minmax(0,1fr); } .programCard { flex-basis: 100%; max-width: none; } }
+@media(prefers-reduced-motion:reduce) { .loading *, .fallback i { animation: none !important; transition: none !important; } }
