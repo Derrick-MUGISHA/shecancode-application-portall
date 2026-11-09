@@ -22,6 +22,7 @@ import { formSchema } from "@/lib/form-schema"
 import { acceptingApplications, programClock } from "@/lib/program-availability"
 import { APPLICATION_STEPS, applicationStepSchemas, applicationStepForField } from "@/lib/application-steps"
 import ApplicationReview from "./application-review"
+import { ApplicationFormSkeleton, ApplicationProgressSkeleton } from "./application-skeletons"
 import styles from "./application-wizard.module.css"
 import CourseSelection, { type Course } from "@/components/form-sections/course-selection"
 import PersonalInformation from "@/components/form-sections/personal-information"
@@ -391,6 +392,11 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
 
         </nav>
   )
+
+  if (!draftReady) return <>
+    {navigationHost && createPortal(<ApplicationProgressSkeleton />, navigationHost)}
+    <ApplicationFormSkeleton step={initialStep ?? 0} />
+  </>
 
   return (
     <>
