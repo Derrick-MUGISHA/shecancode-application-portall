@@ -8,5 +8,3 @@ let added=0
 for(const [name,value] of Object.entries(settings)){if(!new RegExp('^'+name+'=', 'm').test(content)){content+='\n'+name+'="'+value+'"\n';added++}}
 fs.writeFileSync(file,content,{mode:0o600});fs.chmodSync(file,0o600)
 console.log(`Application entry: ${added} missing settings added to .env.local. Existing settings preserved. Keys were not printed.`)
-
-//commenting to deploy
