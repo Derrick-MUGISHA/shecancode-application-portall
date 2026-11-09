@@ -16,7 +16,7 @@ const breadCrumLinks: BreadCrumLinkTypes[] = [
   { label: 'Details', link: '', position: 'end' },
 ];
 
-export default async function ApplicationDetailsPage({ params }: { params: { id: string }}) {
+export default async function ApplicationDetailsPage({ params }: { params: Promise<{ id: string }>}) {
   const { id } = await params;
   const emails = await getEmails();
 
@@ -27,6 +27,7 @@ export default async function ApplicationDetailsPage({ params }: { params: { id:
       },
       include: {
         course: true,
+        cohort: true,
       },
     })
 
@@ -38,7 +39,7 @@ export default async function ApplicationDetailsPage({ params }: { params: { id:
       <div className="min-h-screen flex flex-col">
         <AdminHeader />
         <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} />
-        <main className="flex-1 container mx-auto py-8 px-4">
+        <main className="flex-1 container mx-auto py-4 px-4">
           <ApplicationDetails application={application} emails={emails}/>
         </main>
       </div>

@@ -5,6 +5,8 @@ import { fetchApplications } from "@/lib/actions"
 import BreadcrumbWithCustomSeparator, { BreadCrumLinkTypes } from "@/components/BreadcrumbWithCustomSeparator"
 import AdminProtectedRoute from "@/components/AdminProtectedRoute"
 
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Admin - Applications",
   description: "Manage applicant applications",
@@ -14,8 +16,31 @@ const breadCrumLinks: BreadCrumLinkTypes[] = [
   { label: "Applications", link: "/admin/applications", position: "end" },
 ]
 
-export default async function AdminApplicationsPage() {
+type AdminApplicationsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+const getSearchParam = (params: Record<string, string | string[] | undefined>, key: string) => {
+  const value = params[key]
+  return Array.isArray(value) ? value[0] || "" : value || ""
+}
+
+export default async function AdminApplicationsPage({ searchParams }: AdminApplicationsPageProps) {
   const initialData = await fetchApplications();
+  const params = searchParams ? await searchParams : {}
+  const initialFilters = {
+    search: getSearchParam(params, "search"),
+    status: getSearchParam(params, "status") || "ALL",
+    course: getSearchParam(params, "course") || "ALL",
+    cohort: getSearchParam(params, "cohort") || "ALL",
+    focus: getSearchParam(params,"focus") === "OPEN" ? "OPEN" : "ALL",
+    year: getSearchParam(params, "year") || "ALL",
+    from: /^\d{4}-\d{2}-\d{2}$/.test(getSearchParam(params, "from")) ? getSearchParam(params, "from") : "",
+    to: /^\d{4}-\d{2}-\d{2}$/.test(getSearchParam(params, "to")) ? getSearchParam(params, "to") : "",
+    sort: ["newest","oldest","name","cohort","course","status"].includes(getSearchParam(params,"sort")) ? getSearchParam(params,"sort") : "newest",
+    page: Number(getSearchParam(params,"page")) || 1,
+    pageSize: Number(getSearchParam(params,"pageSize")) || 25,
+  }
 
   return (
     <AdminProtectedRoute>
@@ -27,7 +52,7 @@ export default async function AdminApplicationsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-gray-700">Applications</h1>
           <p className="text-muted-foreground pt-2">View and manage all applicant applications</p>
         </div> */}
-        <ApplicationList initialData={initialData} />
+        <ApplicationList initialData={initialData} initialFilters={initialFilters} />
       </main>
       </div>
       </AdminProtectedRoute>
