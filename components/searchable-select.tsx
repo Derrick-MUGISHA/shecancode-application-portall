@@ -1,9 +1,11 @@
 "use client"
 import { forwardRef, useState } from "react"
 import type { ButtonHTMLAttributes } from "react"
-import { Check, ChevronDown, Loader2, MapPin, Globe2 } from "lucide-react"
+import { Check, ChevronDown, MapPin, Globe2 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
+
+import { ApplicationFieldSkeleton } from "./application-skeletons"
 
 export type SearchOption = { value: string; label: string; keywords?: string[] }
 type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "value" | "onChange"> & {
@@ -13,6 +15,7 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "value" | "onChange">
 const SearchableSelect = forwardRef<HTMLButtonElement, Props>(({ value, onChange, options, label, placeholder, loading, disabled, className, ...props }, ref) => {
   const [open, setOpen] = useState(false)
   const Icon = label === "Nationality" ? Globe2 : MapPin
+  if (loading) return <div id={props.id}><ApplicationFieldSkeleton label={label} /></div>
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -20,7 +23,7 @@ const SearchableSelect = forwardRef<HTMLButtonElement, Props>(({ value, onChange
           disabled={disabled || loading} className={`flex h-11 w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition-[border-color,box-shadow] duration-150 hover:enabled:border-slate-300 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:border-slate-500 focus-visible:ring-2 focus-visible:ring-slate-200/70 ${className || ""}`}>
           <Icon size={16} strokeWidth={1.6} className="shrink-0 text-slate-400" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate">{options.find(option => option.value === value)?.label || value || placeholder || `Select ${label.toLowerCase()}`}</span>
-          {loading ? <Loader2 size={16} className="animate-spin shrink-0" aria-hidden="true" /> : <ChevronDown size={16} className="shrink-0 opacity-60" aria-hidden="true" />}
+          <ChevronDown size={16} className="shrink-0 opacity-60" aria-hidden="true" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" aria-label={`Choose ${label.toLowerCase()}`} className="w-[var(--radix-popover-trigger-width)] border-slate-300 p-0 bg-white text-slate-900 shadow-lg">
