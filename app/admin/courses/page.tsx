@@ -17,7 +17,7 @@ export default async function AdminCoursesPage() {
     <AdminProtectedRoute>
     <div className="min-h-screen flex flex-col">
       <AdminHeader />
-      <main className="flex-1 container mx-auto py-8 px-4">
+      <main id="admin-main" tabIndex={-1} className="flex-1 w-full min-w-0 py-8 px-4">
         <CourseList initialPrograms={programs} />
       </main>
       </div>

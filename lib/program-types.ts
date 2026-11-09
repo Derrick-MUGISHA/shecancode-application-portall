@@ -1,4 +1,5 @@
 export type CohortOption = {
+  createdAt?: string
   id: string
   number: number
   cohortLabel: string

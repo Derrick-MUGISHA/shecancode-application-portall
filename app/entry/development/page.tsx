@@ -1,2 +1,15 @@
-import {notFound} from "next/navigation"
-export default function DevelopmentEntry(){if(process.env.NODE_ENV!=="development")notFound();return <><h1 className="text-2xl font-semibold text-[#193f60]">Development entry</h1><p className="text-slate-600">Generate a fresh, one-time entry link for local testing. Applications submitted through it are labelled “Local development”. This entry is disabled in production.</p><form method="post" action="/api/application-entry/development"><button type="submit" className="min-h-11 rounded-lg bg-[#193f60] px-5 py-3 font-medium text-white">Create test entry</button></form></>}
+import { notFound, redirect } from "next/navigation"
+import { cookies, headers } from "next/headers"
+import { ENTRY_COOKIE, isLocalDevelopmentPortal, portalOrigin } from "@/lib/entry-token"
+import { entrySessionFromCookie } from "@/lib/entry-session"
+import AutomaticApplicationEntry from "@/components/automatic-application-entry"
+
+export const dynamic = "force-dynamic"
+
+export default async function DevelopmentEntry() {
+  if (!isLocalDevelopmentPortal()) notFound()
+  if ((await headers()).get("host") !== new URL(portalOrigin()).host) notFound()
+  const entry = await entrySessionFromCookie((await cookies()).get(ENTRY_COOKIE)?.value)
+  if (entry) redirect("/apply")
+  return <AutomaticApplicationEntry action="/api/application-entry/development" />
+}

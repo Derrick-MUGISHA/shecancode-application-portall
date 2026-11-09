@@ -21,7 +21,7 @@ async function enterProgram(program:unknown){
 }
 
 // No entry is redeemed here. Each plain-link visit only mints a fresh encrypted link.
-// The portal confirmation POST remains the single-use boundary.
+// The portal automatically redeems the token through its single-use POST endpoint.
 export async function GET(request:Request){return enterProgram(new URL(request.url).searchParams.get('program'))}
 export async function POST(request:Request){
   const allowed=['https://www.igirerwanda.org','https://igirerwanda.org']

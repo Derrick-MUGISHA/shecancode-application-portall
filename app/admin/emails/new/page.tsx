@@ -23,7 +23,7 @@ export default async function page() {
         <div className="min-h-screen flex flex-col">
             <AdminHeader />
             <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} />
-            <main className="flex-1 container mx-auto py-8 px-4">
+            <main id="admin-main" tabIndex={-1} className="flex-1 w-full min-w-0 py-8 px-4">
                 <div className="mb-8">
                     <div className="flex justify-between items-center">
                         <h1 className="text-3xl font-bold tracking-tight text-gray-700">Add New Email</h1>

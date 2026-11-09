@@ -1,7 +1,11 @@
 "use client";
 
+// @refresh reset
+// Remount after development edits; data and view state live in the shared query cache.
+
 import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
+import { Arrow as PopoverArrow } from "@radix-ui/react-popover";
 import {
   filterAdminApplications,
   paginateAdminRows,
@@ -15,6 +19,9 @@ import { kigaliDateTimeInput } from "@/lib/program-availability";
 import AdminSelect from "./admin-select";
 import AdminDatePicker from "./admin-date-picker";
 import ApplicationAnalytics from "./application-analytics";
+import { AdminPageContentSkeleton } from "./admin-skeletons";
+import ProfileAvatar from "./profile-avatar";
+import TablePagination from "./table-pagination";
 import ContactLink from "../contact-link";
 import styles from "./admin.module.css";
 import {
@@ -29,52 +36,49 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Eye,
   EyeOff,
   Download,
   Loader2,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpRight,
+  Search,
+  SlidersHorizontal,
+  Inbox,
+  RotateCcw,
+  X,
+  UsersRound,
 } from "lucide-react";
-import { fetchApplications, updateApplicationStatuses } from "@/lib/actions";
+import { updateApplicationStatuses } from "@/lib/actions";
 import { generateDownloadExcel } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-type Application = {
-  id: string;
-  fullName: string;
-  email: string;
-  status: string;
-  cohort?: { id: string; number: number; isOpen?: boolean; capacity?: number | null; closesAt?: Date | string | null; _count?: { applications: number } } | null;
-  cohortLabel?: string | null;
-  entrySourceDomain?: string | null;
-  createdAt: string | Date;
-  course: {
-    id: string;
-    name: string;
-    cohortLabel?: string | null;
-    isOpen?: boolean;
-  } | null;
-};
+import type {
+  Application,
+  ApplicationsResult,
+} from "@/lib/admin-application-list-types";
+import {
+  useAdminApplications,
+  ADMIN_APPLICATIONS_VIEW_KEY,
+} from "@/hooks/use-admin-applications";
+import { useQueryClient } from "@tanstack/react-query";
+import { auth } from "@/lib/firebase";
 
-type Course = {
-  id: string;
-  name: string;
-};
-
-type Statistics = {
-  totalApplicants: number;
-  applicantsByStatus: Record<string, number>;
-  applicantsByCourse: Record<string, number>;
-  applicantsByStatusAndCourse: Record<string, number>;
-  courses: Course[];
-};
-
-type ApplicationsResult =
-  | { success: true; applications: Application[]; statistics: Statistics }
-  | { success: false; message: string };
+const EMPTY_APPLICATIONS: Application[] = [];
 
 const statusColors: Record<string, string> = {
   UNDER_REVIEW:
@@ -118,34 +122,84 @@ const applicationStatuses = [
 export default function ApplicationList({
   initialData,
   initialFilters,
+  restoreView = false,
 }: {
-  initialData: ApplicationsResult;
+  initialData?: ApplicationsResult;
+  restoreView?: boolean;
   initialFilters: Partial<AdminFilters> & { page?: number; pageSize?: number };
 }) {
-  const [applications, setApplications] = useState<Application[]>(
-    initialData.success ? initialData.applications : [],
+  const queryClient = useQueryClient();
+  const applicationQuery = useAdminApplications(initialData);
+  const applications =
+    applicationQuery.data?.applications ?? EMPTY_APPLICATIONS;
+  const viewKey = useMemo(
+    () => [...ADMIN_APPLICATIONS_VIEW_KEY, auth.currentUser?.uid ?? "session"],
+    [auth.currentUser?.uid],
   );
-  const [filters, setFilters] = useState<AdminFilters>({
-    ...DEFAULT_ADMIN_FILTERS,
-    ...initialFilters,
-  });
-  const [page, setPage] = useState(initialFilters.page || 1);
-  const [pageSize, setPageSize] = useState(initialFilters.pageSize || 25);
-  const [hideDetails, setHideDetails] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const cachedView = queryClient.getQueryData<{
+    filters: AdminFilters;
+    page: number;
+    pageSize: number;
+    hideDetails: boolean;
+  }>(viewKey);
+  const savedView = restoreView ? cachedView : undefined;
+  const [filters, setFilters] = useState<AdminFilters>(
+    () => savedView?.filters ?? { ...DEFAULT_ADMIN_FILTERS, ...initialFilters },
+  );
+  const [page, setPage] = useState(savedView?.page ?? initialFilters.page ?? 1);
+  const [pageSize, setPageSize] = useState(
+    savedView?.pageSize ?? initialFilters.pageSize ?? 25,
+  );
+  const [hideDetails, setHideDetails] = useState(
+    cachedView?.hideDetails ?? false,
+  );
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterPanelRef = useRef<HTMLElement>(null);
+  const [filterPanelWidth, setFilterPanelWidth] = useState(0);
+  useEffect(() => {
+    const panel = filterPanelRef.current;
+    if (!panel) return;
+    const observer = new ResizeObserver(() =>
+      setFilterPanelWidth(panel.clientWidth),
+    );
+    observer.observe(panel);
+    setFilterPanelWidth(panel.clientWidth);
+    return () => observer.disconnect();
+  }, [applicationQuery.isPending]);
+  const [refreshing, setLoading] = useState(false);
+  const loading = refreshing || applicationQuery.isPending;
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
-  const [error, setError] = useState<string | null>(
-    initialData.success ? null : initialData.message,
-  );
+  const [refreshError, setError] = useState<string | null>(null);
+  const error = refreshError ?? (applicationQuery.error?.message || null);
+  useEffect(() => {
+    queryClient.setQueryData(viewKey, { filters, page, pageSize, hideDetails });
+  }, [queryClient, viewKey, filters, page, pageSize, hideDetails]);
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<
     string[]
   >([]);
   const [bulkStatus, setBulkStatus] = useState("");
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkError, setBulkError] = useState("");
   const { toast } = useToast();
   const filtered = useMemo(
     () => filterAdminApplications(applications, filters),
     [applications, filters],
   );
+  const activeFilterCount = (
+    Object.keys(DEFAULT_ADMIN_FILTERS) as (keyof AdminFilters)[]
+  ).filter(
+    (key) => key !== "search" && filters[key] !== DEFAULT_ADMIN_FILTERS[key],
+  ).length;
+  const additionalFilterCount = (
+    ["year", "from", "to", "sort"] as const
+  ).filter((key) => filters[key] !== DEFAULT_ADMIN_FILTERS[key]).length;
+  const hasActiveFilters = activeFilterCount > 0 || Boolean(filters.search);
+  const resetFilters = () => {
+    setFilters({ ...DEFAULT_ADMIN_FILTERS });
+    setPage(1);
+    setSelectedApplicationIds([]);
+    setBulkStatus("");
+  };
   const pagination = paginateAdminRows(filtered, page, pageSize);
   const cohorts = useMemo(
     () =>
@@ -223,22 +277,20 @@ export default function ApplicationList({
       current.filter((id) => applications.some((row) => row.id === id)),
     );
   }, [applications]);
-  const lastRefresh = useRef(Date.now());
+  const lastRefresh = useRef(applicationQuery.dataUpdatedAt);
   const refreshActive = useRef(false);
   const refresh = async (background = false) => {
     if (refreshActive.current) return;
     refreshActive.current = true;
-    lastRefresh.current = Date.now();
     if (!background) setLoading(true);
     try {
-      const result = await fetchApplications();
-      if (result.success) {
-        setApplications(result.applications);
-        setError(null);
-      } else setError(result.message);
+      const result = await applicationQuery.refetch({ cancelRefetch: false });
+      if (result.error) throw result.error;
+      setError(null);
     } catch {
       setError("Unable to refresh applications. Please try again.");
     } finally {
+      lastRefresh.current = Date.now();
       refreshActive.current = false;
       setLoading(false);
     }
@@ -247,34 +299,61 @@ export default function ApplicationList({
     const refreshInBackground = () => {
       if (
         document.visibilityState === "visible" &&
+        applicationQuery.data &&
+        !applicationQuery.isFetching &&
         !isBulkUpdating &&
-        Date.now() - lastRefresh.current >= 5000
+        !bulkDialogOpen &&
+        Date.now() -
+          Math.max(lastRefresh.current, applicationQuery.dataUpdatedAt) >=
+          60000
       )
         void refresh(true);
     };
-    const timer = setInterval(refreshInBackground, 5000);
+    // Refresh on return to a stale tab, rather than fetching every five seconds.
     window.addEventListener("focus", refreshInBackground);
     document.addEventListener("visibilitychange", refreshInBackground);
+    // Cached results stay visible while a stale return checks only their version.
+    refreshInBackground();
     return () => {
-      clearInterval(timer);
       window.removeEventListener("focus", refreshInBackground);
       document.removeEventListener("visibilitychange", refreshInBackground);
     };
-  }, [isBulkUpdating]);
-  const toggle = (id: string, checked: boolean) =>
+  }, [
+    isBulkUpdating,
+    bulkDialogOpen,
+    applicationQuery.dataUpdatedAt,
+    applicationQuery.isFetching,
+  ]);
+  const openSelectionOptions = () => {
+    setBulkStatus("");
+    setBulkError("");
+    setBulkDialogOpen(true);
+  };
+  const toggle = (id: string, checked: boolean) => {
     setSelectedApplicationIds((current) =>
       checked
         ? Array.from(new Set([...current, id]))
         : current.filter((value) => value !== id),
     );
-  const togglePage = (checked: boolean) =>
+    if (checked) openSelectionOptions();
+  };
+  const togglePage = (checked: boolean) => {
     setSelectedApplicationIds((current) =>
       checked
         ? Array.from(new Set([...current, ...visibleIds]))
         : current.filter((id) => !visibleIds.includes(id)),
     );
+    if (checked && visibleIds.length) openSelectionOptions();
+  };
   const bulkUpdate = async () => {
-    if (!selectedApplicationIds.length || !bulkStatus) return;
+    if (
+      !selectedApplicationIds.length ||
+      !bulkStatus ||
+      !selectedNeedingChange ||
+      isBulkUpdating
+    )
+      return;
+    setBulkError("");
     setIsBulkUpdating(true);
     try {
       const result = await updateApplicationStatuses(
@@ -286,12 +365,15 @@ export default function ApplicationList({
         description: result.message,
         variant: result.success ? "default" : "destructive",
       });
+      if (!result.success) setBulkError(result.message);
       if (result.success) {
+        setBulkDialogOpen(false);
         setSelectedApplicationIds([]);
         setBulkStatus("");
         await refresh();
       }
     } catch {
+      setBulkError("Unable to update applications. Please try again.");
       toast({
         title: "Unable to update",
         description: "Please try again.",
@@ -313,23 +395,78 @@ export default function ApplicationList({
       options={options}
     />
   );
+  const activeFilters: { key: keyof AdminFilters; label: string }[] = [
+    {
+      key: "search",
+      label: hideDetails ? "Search active" : `Search: ${filters.search}`,
+    },
+    {
+      key: "course",
+      label: `Program: ${courses.find((course) => course.id === filters.course)?.name || "Data not available"}`,
+    },
+    { key: "cohort", label: `Cohort: ${cohortName(filters.cohort)}` },
+    {
+      key: "status",
+      label: `Status: ${applicationStatuses.find((status) => status.value === filters.status)?.label || filters.status}`,
+    },
+    { key: "year", label: `Year: ${filters.year}` },
+    { key: "from", label: `From: ${filters.from}` },
+    { key: "to", label: `Through: ${filters.to}` },
+    {
+      key: "sort",
+      label: `Sort: ${({ oldest: "Oldest first", name: "Applicant A–Z", cohort: "Cohort number", course: "Program A–Z", status: "Status A–Z" } as Record<string, string>)[filters.sort] || "Newest first"}`,
+    },
+    { key: "focus", label: "Open cohorts only" },
+  ];
+  if (applicationQuery.isPending) return <AdminPageContentSkeleton kind="applications" />;
   return (
     <div className={styles.workspace}>
       <header className={styles.heading}>
         <div>
+          <span className={styles.eyebrow}>Admissions workspace</span>
           <h1>Applications</h1>
           <p>
-            Review applicants, compare cohorts, and follow every application.
+            A clear view of every applicant. Move the next opportunity forward.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2"><Button type="button" variant={filters.focus === "OPEN" ? "default" : "outline"} aria-pressed={filters.focus === "OPEN"} title="Show only applications belonging to cohorts that are open, have spaces, and have not closed." onClick={()=>updateFilter("focus",filters.focus === "OPEN" ? "ALL" : "OPEN")}>Focus: open cohorts</Button><Button type="button" variant="outline" aria-pressed={hideDetails} onClick={()=>setHideDetails(value=>!value)}>{hideDetails?<Eye size={16} className="mr-2"/>:<EyeOff size={16} className="mr-2"/>}{hideDetails?"Show details":"Hide details"}</Button>
-        <Button variant="outline" onClick={() => void refresh()} disabled={loading}>
-          <RefreshCw
-            size={15}
-            className={loading ? "mr-2 animate-spin" : "mr-2"}
-          />
-          Refresh
-        </Button></div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant={filters.focus === "OPEN" ? "default" : "outline"}
+            aria-pressed={filters.focus === "OPEN"}
+            onClick={() =>
+              updateFilter("focus", filters.focus === "OPEN" ? "ALL" : "OPEN")
+            }
+            title="Show applicants in open cohorts with spaces available"
+          >
+            <UsersRound className="h-4 w-4" />
+            Focus: open cohorts
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            aria-pressed={hideDetails}
+            onClick={() => setHideDetails((value) => !value)}
+          >
+            {hideDetails ? (
+              <Eye size={16} className="mr-2" />
+            ) : (
+              <EyeOff size={16} className="mr-2" />
+            )}
+            {hideDetails ? "Show details" : "Hide details"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => void refresh()}
+            disabled={loading}
+          >
+            <RefreshCw
+              size={15}
+              className={loading ? "mr-2 animate-spin" : "mr-2"}
+            />
+            Refresh
+          </Button>
+        </div>
       </header>
       {error && (
         <div
@@ -342,17 +479,36 @@ export default function ApplicationList({
           </Button>
         </div>
       )}
-      <section className={styles.toolbar} aria-label="Application filters">
-        <div className={styles.filters}>
-          <label className={styles.filter}>
-            Search applicants
-            <Input
-              type={hideDetails?"password":"search"}
-              placeholder="Name or email"
-              value={filters.search}
-              onChange={(event) => updateFilter("search", event.target.value)}
-            />
-          </label>
+      <ApplicationAnalytics rows={filtered} total={applications.length} />
+      <section
+        ref={filterPanelRef}
+        className={styles.compactFilterBar}
+        aria-label="Application filters"
+      >
+        <div className={styles.primaryFilters}>
+          <div className={`${styles.filter} ${styles.compactSearch}`}>
+            <label htmlFor="admin-applicant-search">Search applicants</label>
+            <span className={styles.searchField}>
+              <Search size={16} aria-hidden="true" />
+              <Input
+                id="admin-applicant-search"
+                type={hideDetails ? "password" : "search"}
+                placeholder="Search by name or email…"
+                value={filters.search}
+                onChange={(event) => updateFilter("search", event.target.value)}
+              />
+              {filters.search && (
+                <button
+                  type="button"
+                  className={styles.clearSearch}
+                  aria-label="Clear applicant search"
+                  onClick={() => updateFilter("search", "")}
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              )}
+            </span>
+          </div>
           {selectFilter("course", "Program", [
             { value: "ALL", label: "All programs" },
             ...courses.map((course) => ({
@@ -371,70 +527,200 @@ export default function ApplicationList({
             { value: "ALL", label: "All statuses" },
             ...applicationStatuses,
           ])}
-          {selectFilter("year", "Submission year", [
-            { value: "ALL", label: "All years" },
-            ...years.map((value) => ({ value, label: value })),
-          ])}
-          <div className={styles.filter}>
-            <span>Applied from (Kigali)</span>
-            <AdminDatePicker
-              label="Applied from (Kigali)"
-              value={filters.from}
-              onChange={(value) => updateFilter("from", value)}
-            />
+          <div className={styles.filterActions}>
+            <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={styles.filterTrigger}
+                >
+                  <SlidersHorizontal size={16} aria-hidden="true" />
+                  More filters
+                  {additionalFilterCount > 0 && (
+                    <span
+                      className={styles.filterCount}
+                      aria-label={`${additionalFilterCount} additional active filters`}
+                    >
+                      {additionalFilterCount}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                side="bottom"
+                sideOffset={14}
+                collisionBoundary={
+                  filterPanelRef.current?.closest("main") ?? undefined
+                }
+                collisionPadding={16}
+                style={{
+                  maxWidth: filterPanelWidth
+                    ? Math.min(480, Math.max(0, filterPanelWidth - 32))
+                    : undefined,
+                }}
+                aria-labelledby="application-filters-title"
+                aria-describedby="application-filters-description"
+                className={`${styles.filterPopover} w-[480px] max-w-[calc(100vw-32px)] rounded-2xl p-0`}
+              >
+                <div className={styles.popoverHeader}>
+                  <div>
+                    <h2 id="application-filters-title">
+                      More filters & sorting
+                    </h2>
+                    <p id="application-filters-description">
+                      Results update as you choose your filters.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Close filters"
+                    onClick={() => setFiltersOpen(false)}
+                  >
+                    <X size={18} aria-hidden="true" />
+                  </Button>
+                </div>
+                <div className={styles.popoverBody}>
+                  <div className={styles.popoverGrid}>
+                    {selectFilter("year", "Submission year", [
+                      { value: "ALL", label: "All years" },
+                      ...years.map((value) => ({ value, label: value })),
+                    ])}
+                    {selectFilter("sort", "Sort applications", [
+                      { value: "newest", label: "Newest first" },
+                      { value: "oldest", label: "Oldest first" },
+                      { value: "name", label: "Applicant A–Z" },
+                      { value: "cohort", label: "Cohort number" },
+                      { value: "course", label: "Program A–Z" },
+                      { value: "status", label: "Status A–Z" },
+                    ])}
+                  </div>
+                  <div className={styles.popoverSection}>
+                    <h3>Submission dates · Kigali</h3>
+                    <div className={styles.popoverGrid}>
+                      <div className={styles.filter}>
+                        <span>From</span>
+                        <AdminDatePicker
+                          label="Applied from (Kigali)"
+                          value={filters.from}
+                          onChange={(value) => updateFilter("from", value)}
+                        />
+                      </div>
+                      <div className={styles.filter}>
+                        <span>Through</span>
+                        <AdminDatePicker
+                          label="Applied through (Kigali)"
+                          value={filters.to}
+                          onChange={(value) => updateFilter("to", value)}
+                        />
+                      </div>
+                    </div>
+                    {filters.from &&
+                      filters.to &&
+                      filters.from > filters.to && (
+                        <p role="alert" className="mt-3 text-sm text-red-700">
+                          The end date must be on or after the start date.
+                        </p>
+                      )}
+                  </div>
+
+                </div>
+                <div className={styles.popoverFooter}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!hasActiveFilters}
+                    onClick={resetFilters}
+                  >
+                    <RotateCcw size={15} aria-hidden="true" />
+                    Reset filters
+                  </Button>
+                  <Button type="button" onClick={() => setFiltersOpen(false)}>
+                    Show {filtered.length.toLocaleString()} result
+                    {filtered.length === 1 ? "" : "s"}
+                  </Button>
+                </div>
+                <PopoverArrow className={styles.filterPopoverArrow} width={18} height={9} />
+              </PopoverContent>
+            </Popover>
           </div>
-          <div className={styles.filter}>
-            <span>Applied through (Kigali)</span>
-            <AdminDatePicker
-              label="Applied through (Kigali)"
-              value={filters.to}
-              onChange={(value) => updateFilter("to", value)}
-            />
-          </div>
-          {selectFilter("sort", "Sort applications", [
-            { value: "newest", label: "Newest first" },
-            { value: "oldest", label: "Oldest first" },
-            { value: "name", label: "Applicant A–Z" },
-            { value: "cohort", label: "Cohort number" },
-            { value: "course", label: "Program A–Z" },
-            { value: "status", label: "Status A–Z" },
-          ])}
         </div>
-        {filters.from && filters.to && filters.from > filters.to && (
-          <p role="alert" className="mt-3 text-sm text-red-700">
-            The end date must be on or after the start date.
-          </p>
-        )}
-        <div className={styles.filterFooter}>
-          <span>
-            Filters apply to analytics, the table, and exported results.
+        <div className={styles.activeFilterRow}>
+          <span className={styles.filterResults} role="status">
+            {filtered.length.toLocaleString()} result
+            {filtered.length === 1 ? "" : "s"}
+            {hasActiveFilters ? " · filtered" : ""}
           </span>
+          {hasActiveFilters && (
+            <div className={styles.filterChips} aria-label="Active filters">
+              {activeFilters
+                .filter(
+                  ({ key }) => filters[key] !== DEFAULT_ADMIN_FILTERS[key],
+                )
+                .map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={styles.filterChip}
+                    aria-label={`Remove ${label}`}
+                    title={label}
+                    onClick={() =>
+                      updateFilter(key, DEFAULT_ADMIN_FILTERS[key] ?? "")
+                    }
+                  >
+                    <span>{label}</span>
+                    <X size={12} aria-hidden="true" />
+                  </button>
+                ))}
+            </div>
+          )}
           <Button
+            type="button"
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setFilters(DEFAULT_ADMIN_FILTERS);
-              setPage(1);
-              setSelectedApplicationIds([]);
-            }}
+            disabled={!hasActiveFilters}
+            onClick={resetFilters}
+            className={styles.resetFilters}
           >
-            Reset filters
+            <RotateCcw size={14} aria-hidden="true" />
+            Reset all
           </Button>
         </div>
       </section>
-      {filters.focus === "OPEN" && <p role="status" className="text-sm text-slate-600">Focus mode shows applications in open cohorts with available spaces. Turn it off to see all records.</p>}
-      <ApplicationAnalytics rows={filtered} total={applications.length} />
+      {filters.focus === "OPEN" && (
+        <p role="status" className="text-sm text-slate-600">
+          Focus mode shows applications in open cohorts with available spaces.
+          Turn it off to see all records.
+        </p>
+      )}
       <section
-        className={styles.panel}
+        className={styles.recordsSection}
         aria-labelledby="applications-table-heading"
         aria-busy={loading}
       >
         <div className={styles.tableHeader}>
           <div>
-            <h2 id="applications-table-heading">Applicant records</h2>
+            <h2
+              id="applications-table-heading"
+              className="flex items-center gap-2"
+            >
+              Applicant records
+              <span className={styles.recordCount}>
+                {filtered.length.toLocaleString()}
+              </span>
+            </h2>
             <p className={styles.note} role="status">
               Showing {pagination.start}–{pagination.end} of{" "}
               {filtered.length.toLocaleString()} matching applications
+              {selectedApplicationIds.length > 0 && (
+                <span className="font-medium text-slate-700">
+                  {" "}
+                  · {selectedApplicationIds.length.toLocaleString()} selected
+                </span>
+              )}
             </p>
           </div>
           <Button
@@ -447,40 +733,136 @@ export default function ApplicationList({
           </Button>
         </div>
         {selectedApplicationIds.length > 0 && (
-          <div className={styles.selection} aria-label="Bulk application status update">
+          <div
+            className={styles.selectionBar}
+            aria-label="Selected applications"
+          >
             <strong>
-              {selectedApplicationIds.length} selected
+              {selectedApplicationIds.length.toLocaleString()} selected
             </strong>
-            <AdminSelect
-              label="Change selected status"
-              disabled={isBulkUpdating}
-              value={bulkStatus}
-              onChange={setBulkStatus}
-              options={applicationStatuses}
-              placeholder="Choose status"
-            />
-            <Button
-              onClick={bulkUpdate}
-              aria-describedby="bulk-status-help"
-              disabled={!bulkStatus || !selectedNeedingChange || isBulkUpdating}
+            <Dialog
+              open={bulkDialogOpen}
+              onOpenChange={(open) => {
+                if (isBulkUpdating) return;
+                setBulkDialogOpen(open);
+                if (open) {
+                  setBulkStatus("");
+                  setBulkError("");
+                }
+              }}
             >
-              {isBulkUpdating ? (
-                <Loader2 className="mr-2 animate-spin" size={15} />
-              ) : null}
-              {selectedNeedingChange ? `Update ${selectedNeedingChange} application${selectedNeedingChange === 1 ? "" : "s"}` : "Update selected"}
-            </Button>
+              <DialogTrigger asChild>
+                <Button type="button" size="sm" disabled={isBulkUpdating}>
+                  Update status
+                </Button>
+              </DialogTrigger>
+              <DialogContent
+                className={`${styles.bulkDialog} w-[calc(100vw-32px)] max-w-lg max-h-[90dvh] overflow-y-auto rounded-2xl bg-white p-6`}
+              >
+                <DialogHeader className="pr-6">
+                  <DialogTitle>Update application status</DialogTitle>
+                  <DialogDescription>
+                    Choose a status for{" "}
+                    {selectedApplicationIds.length.toLocaleString()} selected
+                    application{selectedApplicationIds.length === 1 ? "" : "s"}.
+                  </DialogDescription>
+                </DialogHeader>
+                <AdminSelect
+                  label="New status"
+                  disabled={isBulkUpdating}
+                  value={bulkStatus}
+                  onChange={(value) => {
+                    setBulkStatus(value);
+                    setBulkError("");
+                  }}
+                  options={applicationStatuses}
+                  placeholder="Choose a status"
+                />
+                <p
+                  id="bulk-status-help"
+                  role="status"
+                  className={styles.bulkHelp}
+                >
+                  {!bulkStatus
+                    ? "Applications keep their current status until you save."
+                    : !selectedNeedingChange
+                      ? "All selected applications already have this status. Choose a different status to update them."
+                      : `${selectedNeedingChange} of ${selectedApplicationIds.length} selected applications will change. Applications already at this status will stay as they are.`}
+                </p>
+                {bulkError && (
+                  <p
+                    role="alert"
+                    className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                  >
+                    {bulkError}
+                  </p>
+                )}
+                <DialogFooter className="gap-2 border-t border-slate-100 pt-4 sm:space-x-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isBulkUpdating}
+                    onClick={() => setBulkDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={bulkUpdate}
+                    aria-describedby="bulk-status-help"
+                    disabled={
+                      !bulkStatus || !selectedNeedingChange || isBulkUpdating
+                    }
+                  >
+                    {isBulkUpdating && (
+                      <Loader2
+                        className="animate-spin"
+                        size={15}
+                        aria-hidden="true"
+                      />
+                    )}
+                    {isBulkUpdating
+                      ? "Updating…"
+                      : selectedNeedingChange && bulkStatus
+                        ? `Update ${selectedNeedingChange} application${selectedNeedingChange === 1 ? "" : "s"}`
+                        : "Update status"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             <Button
+              type="button"
               variant="ghost"
-              onClick={() => setSelectedApplicationIds([])}
+              size="sm"
+              onClick={() => {
+                setSelectedApplicationIds([]);
+                setBulkStatus("");
+              }}
               disabled={isBulkUpdating}
             >
               Clear selection
             </Button>
-            <p id="bulk-status-help" role="status" className="w-full text-sm text-slate-600">{!bulkStatus ? "Choose the new status to apply to your selection." : !selectedNeedingChange ? "All selected applications already have this status. Choose a different status to update them." : `${selectedNeedingChange} of ${selectedApplicationIds.length} selected applications will change. The others already have this status.`}</p>
           </div>
         )}
         {!filtered.length ? (
-          <p className={styles.empty}>No applications match these filters.</p>
+          <div className={styles.empty}>
+            <Inbox size={24} aria-hidden="true" />
+            <strong>
+              {applications.length
+                ? "No matching applications"
+                : "Your next cohort starts here"}
+            </strong>
+            <p>
+              {applications.length
+                ? "Try a different name, program, or status to find an applicant."
+                : "New applications will appear here when applicants submit their forms."}
+            </p>
+            {applications.length > 0 && (
+              <Button variant="outline" onClick={resetFilters}>
+                Clear filters
+              </Button>
+            )}
+          </div>
         ) : (
           <div className={styles.tableScroll}>
             <Table>
@@ -502,16 +884,17 @@ export default function ApplicationList({
                       disabled={isBulkUpdating}
                     />
                   </TableHead>
+                  <TableHead aria-label="Row number">#</TableHead>
                   <TableHead>Applicant</TableHead>
                   <TableHead>Program</TableHead>
                   <TableHead>Cohort</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Applied · Kigali</TableHead>
+                  <TableHead>Applied</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pagination.rows.map((row) => (
+                {pagination.rows.map((row, index) => (
                   <TableRow
                     key={row.id}
                     data-state={
@@ -527,20 +910,38 @@ export default function ApplicationList({
                           toggle(row.id, checked === true)
                         }
                         disabled={isBulkUpdating}
-                        aria-label={hideDetails?"Select hidden applicant":`Select ${hideDetails?"Applicant hidden":row.fullName}`}
+                        aria-label={
+                          hideDetails
+                            ? "Select hidden applicant"
+                            : `Select ${hideDetails ? "Applicant hidden" : row.fullName}`
+                        }
                       />
                     </TableCell>
+                    <TableCell className={styles.rowNumber}>
+                      {pagination.start + index}
+                    </TableCell>
                     <TableCell>
-                      <span className="font-semibold text-slate-800">
-                        {hideDetails?"Applicant hidden":row.fullName}
-                      </span>
-                      <span className="mt-1 block text-sm text-slate-500">
-                        {hideDetails?"Email hidden":<ContactLink value={row.email} kind="email"/>}
-                      </span>
+                      <div className={styles.applicant}>
+                        <ProfileAvatar id={row.id} hidden={hideDetails} />
+                        <div>
+                          <span className="font-semibold text-slate-800">
+                            {hideDetails ? "Applicant hidden" : row.fullName}
+                          </span>
+                          <span className="mt-1 block text-sm text-slate-500">
+                            {hideDetails ? (
+                              "Email hidden"
+                            ) : (
+                              <ContactLink value={row.email} kind="email" />
+                            )}
+                          </span>
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
                       {row.course?.name || "Data not available"}
-                      <span className="mt-1 block text-sm text-slate-500">From: {row.entrySourceDomain || "Data not available"}</span>
+                      <span className="mt-1 block text-sm text-slate-500">
+                        From: {row.entrySourceDomain || "Data not available"}
+                      </span>
                     </TableCell>
                     <TableCell>{cohortName(cohortOf(row))}</TableCell>
                     <TableCell>
@@ -569,18 +970,19 @@ export default function ApplicationList({
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Link
-                        href={`/admin/applications/${row.id}?from=${encodeURIComponent(listHref)}`}
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        aria-label={`View application for ${hideDetails ? "Applicant hidden" : row.fullName}`}
                       >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          aria-label={`View application for ${hideDetails?"Applicant hidden":row.fullName}`}
+                        <Link
+                          href={`/admin/applications/${row.id}?from=${encodeURIComponent(listHref)}`}
                         >
                           View
                           <ArrowUpRight size={14} className="ml-1" />
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -588,45 +990,9 @@ export default function ApplicationList({
             </Table>
           </div>
         )}
-        <nav className={styles.pagination} aria-label="Applications pagination">
-          <div className="w-40">
-            <AdminSelect
-              label="Rows per page"
-              value={String(pagination.size)}
-              onChange={(value) => {
-                setPageSize(Number(value));
-                setPage(1);
-              }}
-              options={[10, 25, 50, 100].map((size) => ({
-                value: String(size),
-                label: String(size),
-              }))}
-            />
-          </div>
-          <div>
-            <span aria-live="polite">
-              Page {pagination.page} of {pagination.pages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label="Previous page"
-              disabled={pagination.page === 1}
-              onClick={() => setPage(pagination.page - 1)}
-            >
-              <ChevronLeft size={16} />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label="Next page"
-              disabled={pagination.page === pagination.pages}
-              onClick={() => setPage(pagination.page + 1)}
-            >
-              <ChevronRight size={16} />
-            </Button>
-          </div>
-        </nav>
+        <TablePagination page={pagination.page} pageSize={pagination.size} total={filtered.length} noun="applications"
+          ariaLabel="Applications pagination" filtered={hasActiveFilters} selected={selectedApplicationIds.length}
+          onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1) }} />
       </section>
     </div>
   );

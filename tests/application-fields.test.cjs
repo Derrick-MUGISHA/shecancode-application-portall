@@ -870,3 +870,66 @@ test("Igire link navigation issues a fresh token without consuming it and reject
     assert.equal(calls.length,2)
   }finally{global.fetch=originalFetch}
 }))
+
+test("local automatic entry requires development mode, a loopback portal and the configured origin",()=>entryEnvironment(async()=>{
+  const {isLocalDevelopmentPortal,isLocalDevelopmentRequest,issueEntryToken,verifyEntryToken}=load("lib/entry-token.ts")
+  process.env.APPLICATION_PORTAL_URL="http://localhost:3000"
+  assert.equal(isLocalDevelopmentPortal(),false)
+  assert.throws(()=>issueEntryToken("development"))
+  process.env.NODE_ENV="development"
+  for(const origin of ["http://localhost:3000","http://127.0.0.1:3001","http://[::1]:3002"]){
+    process.env.APPLICATION_PORTAL_URL=origin
+    assert.equal(isLocalDevelopmentPortal(),true)
+    assert.equal(isLocalDevelopmentRequest(origin+"/entry/development"),true)
+    assert.equal(verifyEntryToken(issueEntryToken("development")).source,"development")
+    assert.equal(isLocalDevelopmentRequest("http://localhost:4000/entry/development"),false)
+  }
+  process.env.APPLICATION_PORTAL_URL="https://apply.example.test"
+  assert.equal(isLocalDevelopmentPortal(),false)
+  assert.equal(isLocalDevelopmentRequest("http://localhost:3000"),false)
+  assert.throws(()=>issueEntryToken("development"))
+}))
+
+test("development bootstrap rejects foreign origins and production while accepting local automatic POSTs",()=>entryEnvironment(async()=>{
+  const {POST}=load("app/api/application-entry/development/route.ts")
+  const request=(url,origin)=>new Request(url+"/api/application-entry/development",{method:"POST",headers:{Origin:origin}})
+  process.env.NODE_ENV="development"
+  process.env.APPLICATION_PORTAL_URL="http://localhost:3000"
+  const response=await POST(request("http://localhost:3000","http://localhost:3000"))
+  assert.equal(response.status,303)
+  const target=new URL(response.headers.get("location"))
+  assert.equal(target.pathname,"/entry")
+  const {verifyEntryToken}=load("lib/entry-token.ts")
+  assert.equal(verifyEntryToken(target.searchParams.get("token")).source,"development")
+  assert.equal((await POST(request("http://localhost:3000","https://other.example"))).status,403)
+  assert.equal((await POST(request("http://localhost:3001","http://localhost:3001"))).status,404)
+  process.env.NODE_ENV="production"
+  assert.equal((await POST(request("http://localhost:3000","http://localhost:3000"))).status,404)
+}))
+
+test("valid website entry renders only automatic redemption and invalid links still redirect",()=>entryEnvironment(async()=>{
+  const {issueEntryToken}=load("lib/entry-token.ts")
+  const token=issueEntryToken("igire-frontend")
+  const {default:EntryPage}=load("app/entry/page.tsx",{
+    "@/components/automatic-application-entry":{__esModule:true,default:function AutoEntry(){}},
+    "next/navigation":{redirect:target=>{throw Error("redirect:"+target)}},
+  })
+  const page=await EntryPage({searchParams:Promise.resolve({token})})
+  assert.equal(page.props.action,"/api/application-entry/redeem")
+  assert.equal(page.props.token,token)
+  await assert.rejects(()=>EntryPage({searchParams:Promise.resolve({token:"invalid"})}),/redirect:\/entry\/required\?error=invalid/)
+}))
+
+test("automatic entry posts once even when React replays the mount effect",()=>{
+  let posts=0,refs=0
+  const effects=[]
+  const {default:AutomaticEntry}=load("components/automatic-application-entry.tsx",{
+    react:{useRef:()=>({current:refs++===0?{requestSubmit:()=>posts++}:false}),useEffect:callback=>effects.push(callback)},
+  })
+  const page=AutomaticEntry({action:"/api/application-entry/redeem",token:"test-token"})
+  const form=page.props.children[1]
+  assert.equal(form.props.method,"post")
+  assert.equal(form.props.action,"/api/application-entry/redeem")
+  effects[0]();effects[0]()
+  assert.equal(posts,1)
+})

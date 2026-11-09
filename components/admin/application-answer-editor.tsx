@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import type { AdminApplication } from "@/lib/admin-application-types"
 import { formatIdentificationNumber, isRwandaNationalId } from "@/lib/identity-format"
 import { applicationFieldsSchema } from "@/lib/form-schema"
@@ -24,7 +24,7 @@ const human=(value:string)=>value.replace(/([a-z])([A-Z])/g,"$1 $2").replaceAll(
 const long=new Set(["disabilityDetails","occupationDetails","academicBackground","motivation","additionalFeedback"])
 const booleans=new Set(["refugeeStatus","hasDisability","hasYoungChild","hasChildcareSupport","hasLaptop"])
 function initialValues(application:AdminApplication){return Object.fromEntries(groups.flatMap(group=>group.fields).map(key=>[key,key==="dateOfBirth"?new Date(application.dateOfBirth).toISOString().slice(0,10):key==="identificationNumber"?formatIdentificationNumber(application.identificationNumber||"",application.nationality,application.refugeeStatus):(application as unknown as Record<string,unknown>)[key]??(booleans.has(key)?false:"")]))}
-export default function ApplicationAnswerEditor({application,onSaved,onEditingChange}:{application:AdminApplication;onSaved:(application:AdminApplication)=>void;onEditingChange:(value:boolean)=>void}) {
+export default function ApplicationAnswerEditor({application,onSaved,onEditingChange,renderTrigger}:{application:AdminApplication;onSaved:(application:AdminApplication)=>void;onEditingChange:(value:boolean)=>void;renderTrigger?:(openEditor:()=>void)=>ReactNode}) {
   const [open,setOpen]=useState(false),[saving,setSaving]=useState(false),[values,setValues]=useState<Record<string,unknown>>({}),[baseline,setBaseline]=useState<Record<string,unknown>>({}),[version,setVersion]=useState(""),[error,setError]=useState(""),[errors,setErrors]=useState<Record<string,string[]>>({})
   function changeOpen(next:boolean){if(saving)return;setOpen(next);onEditingChange(next);if(next){const data=initialValues(application);setValues(data);setBaseline(data);setVersion(new Date(application.updatedAt).toISOString());setError("");setErrors({})}}
   const changes=Object.fromEntries(Object.entries(values).filter(([key,value])=>value!==baseline[key]).map(([key,value])=>[key,key==="dateOfBirth"?`${value}T00:00:00.000Z`:key==="disabilityType"&&value===""?null:value]))
@@ -40,7 +40,7 @@ export default function ApplicationAnswerEditor({application,onSaved,onEditingCh
     }catch(error){setError(error instanceof Error?error.message:"Unable to save edits.")}
     finally{setSaving(false)}
   }
-  return <><Button type="button" variant="outline" onClick={()=>changeOpen(true)}><Pencil size={16} className="mr-2" aria-hidden="true"/>Edit application</Button><Dialog open={open} onOpenChange={changeOpen}><DialogContent className="flex max-h-[92svh] w-[calc(100vw-24px)] max-w-3xl flex-col overflow-hidden rounded-2xl bg-white"><DialogHeader><DialogTitle>Edit application answers</DialogTitle><DialogDescription>Update applicant information. Program, cohort and the saved attachment stay assigned to this application. No email is sent.</DialogDescription></DialogHeader><form onSubmit={save} className="flex min-h-0 flex-1 flex-col gap-4"><div className="min-h-0 space-y-7 overflow-y-auto px-1 pb-2">{groups.map(group=><fieldset key={group.title} className="space-y-4"><legend className="mb-3 text-lg font-semibold text-[#193f60]">{group.title}</legend><div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{group.fields.map(key=>{
+  return <>{renderTrigger ? renderTrigger(()=>changeOpen(true)) : <Button type="button" variant="outline" size="sm" onClick={()=>changeOpen(true)}><Pencil size={16} className="mr-2" aria-hidden="true"/>Edit</Button>}<Dialog open={open} onOpenChange={changeOpen}><DialogContent className="flex max-h-[92svh] w-[calc(100vw-24px)] max-w-3xl flex-col overflow-hidden rounded-2xl bg-white"><DialogHeader><DialogTitle>Edit application answers</DialogTitle><DialogDescription>Update applicant information. Program, cohort and the saved attachment stay assigned to this application. No email is sent.</DialogDescription></DialogHeader><form onSubmit={save} className="flex min-h-0 flex-1 flex-col gap-4"><div className="min-h-0 space-y-7 overflow-y-auto px-1 pb-2">{groups.map(group=><fieldset key={group.title} className="space-y-4"><legend className="mb-3 text-lg font-semibold text-[#193f60]">{group.title}</legend><div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{group.fields.map(key=>{
     const shape=applicationFieldsSchema.shape[key as keyof typeof applicationFieldsSchema.shape]
     const inner="unwrap" in shape?shape.unwrap():shape
     const candidates="options" in inner?inner.options:undefined
