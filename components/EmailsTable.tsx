@@ -7,12 +7,12 @@ import Link from "next/link"
 import { DataTable } from "./ui/data-table"
 
 interface EmailsTableProps {
-  emails: (Email & { course: Course })[]
+  emails: (Email & { course: Course | null })[]
   courses: Course[]
 }
 
 export default function EmailsTable({ emails, courses }: EmailsTableProps) {
-  const columns: ColumnDef<Email & { course: Course }>[] = [
+  const columns: ColumnDef<Email & { course: Course | null }>[] = [
     {
       accessorKey: "subject",
       header: "Subject",
@@ -23,8 +23,10 @@ export default function EmailsTable({ emails, courses }: EmailsTableProps) {
       ),
     },
     {
-      accessorKey: "course.name",
+      id: "course",
+      accessorFn: (row) => row.course?.name ?? "",
       header: "Course",
+      cell: ({ row }) => row.original.course?.name ?? "-",
     },
     {
       accessorKey: "invitationDate",
@@ -48,7 +50,7 @@ export default function EmailsTable({ emails, courses }: EmailsTableProps) {
       searchKey="subject"
       filters={[
         {
-          column: "course.name",
+          column: "course",
           title: "Course",
           options: courses.map((course) => ({
             label: course.name,

@@ -1,307 +1,633 @@
-"use client"
+"use client";
 
-import {useEffect, useState} from "react"
-import Link from "next/link"
-import { format } from "date-fns"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import {Download, Loader2, Search} from "lucide-react"
-import { fetchApplications } from "@/lib/actions"
-import * as xlsx from "xlsx";
-import {generateDownloadExcel} from "@/lib/utils";
+import { useEffect, useMemo, useState, useRef } from "react";
+import Link from "next/link";
+import {
+  filterAdminApplications,
+  paginateAdminRows,
+  cohortOf,
+  cohortName,
+  kigaliDay,
+  DEFAULT_ADMIN_FILTERS,
+  type AdminFilters,
+} from "@/lib/admin-applications";
+import { kigaliDateTimeInput } from "@/lib/program-availability";
+import AdminSelect from "./admin-select";
+import AdminDatePicker from "./admin-date-picker";
+import ApplicationAnalytics from "./application-analytics";
+import ContactLink from "../contact-link";
+import styles from "./admin.module.css";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Eye,
+  EyeOff,
+  Download,
+  Loader2,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpRight,
+} from "lucide-react";
+import { fetchApplications, updateApplicationStatuses } from "@/lib/actions";
+import { generateDownloadExcel } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 type Application = {
-  id: string
-  fullName: string
-  email: string
-  status: string
-  createdAt: string
+  id: string;
+  fullName: string;
+  email: string;
+  status: string;
+  cohort?: { id: string; number: number; isOpen?: boolean; capacity?: number | null; closesAt?: Date | string | null; _count?: { applications: number } } | null;
+  cohortLabel?: string | null;
+  entrySourceDomain?: string | null;
+  createdAt: string | Date;
   course: {
-    id: string
-    name: string
-  }
-}
+    id: string;
+    name: string;
+    cohortLabel?: string | null;
+    isOpen?: boolean;
+  } | null;
+};
 
 type Course = {
-  id: string
-  name: string
-}
+  id: string;
+  name: string;
+};
 
 type Statistics = {
-  totalApplicants: number
-  applicantsByStatus: Record<string, number>
-  applicantsByCourse: Record<string, number>
-  applicantsByStatusAndCourse: Record<string, number>
-  courses: Course[]
-}
+  totalApplicants: number;
+  applicantsByStatus: Record<string, number>;
+  applicantsByCourse: Record<string, number>;
+  applicantsByStatusAndCourse: Record<string, number>;
+  courses: Course[];
+};
+
+type ApplicationsResult =
+  | { success: true; applications: Application[]; statistics: Statistics }
+  | { success: false; message: string };
 
 const statusColors: Record<string, string> = {
-  UNDER_REVIEW: "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 py-2 shadow-md border border-gray-200",
-  TECHNICAL_INTERVIEW_SCHEDULED: "bg-blue-100 text-blue-800 hover:bg-blue-200 py-2 shadow-md border border-gray-200",
-  TECHNICAL_INTERVIEWED: "bg-indigo-100 text-indigo-800 hover:bg-indigo-200 py-2 shadow-md border border-gray-200",
-  COMMON_INTERVIEW_SCHEDULED: "bg-purple-100 text-purple-800 hover:bg-purple-200 py-2 shadow-md border border-gray-200",
-  COMMON_INTERVIEWED: "bg-fuchsia-100 text-fuchsia-800 hover:bg-fuchsia-200 py-2 shadow-md border border-gray-200",
-  ACCEPTED: "bg-green-100 text-green-800 hover:bg-green-200 py-2 shadow-md border border-gray-200",
-  REJECTED: "bg-red-100 text-red-800 hover:bg-red-200 py-2 shadow-md border border-gray-200",
-  WAITLISTED: "bg-orange-100 text-orange-800 hover:bg-orange-200 py-2 shadow-md border border-gray-200",
-  WITHDRAWN: "bg-gray-100 text-gray-800 hover:bg-gray-200 py-2 shadow-md border border-gray-200",
-  NEEDS_FOLLOW_UP: "bg-pink-100 text-pink-800 hover:bg-pink-200 py-2 shadow-md border border-gray-200",
-}
+  UNDER_REVIEW:
+    "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 py-2 shadow-md border border-gray-200",
+  TECHNICAL_INTERVIEW_SCHEDULED:
+    "bg-blue-100 text-blue-800 hover:bg-blue-200 py-2 shadow-md border border-gray-200",
+  TECHNICAL_INTERVIEWED:
+    "bg-indigo-100 text-indigo-800 hover:bg-indigo-200 py-2 shadow-md border border-gray-200",
+  COMMON_INTERVIEW_SCHEDULED:
+    "bg-purple-100 text-purple-800 hover:bg-purple-200 py-2 shadow-md border border-gray-200",
+  COMMON_INTERVIEWED:
+    "bg-fuchsia-100 text-fuchsia-800 hover:bg-fuchsia-200 py-2 shadow-md border border-gray-200",
+  ACCEPTED:
+    "bg-green-100 text-green-800 hover:bg-green-200 py-2 shadow-md border border-gray-200",
+  REJECTED:
+    "bg-red-100 text-red-800 hover:bg-red-200 py-2 shadow-md border border-gray-200",
+  WAITLISTED:
+    "bg-orange-100 text-orange-800 hover:bg-orange-200 py-2 shadow-md border border-gray-200",
+  WITHDRAWN:
+    "bg-gray-100 text-gray-800 hover:bg-gray-200 py-2 shadow-md border border-gray-200",
+  NEEDS_FOLLOW_UP:
+    "bg-pink-100 text-pink-800 hover:bg-pink-200 py-2 shadow-md border border-gray-200",
+};
+
+const applicationStatuses = [
+  { value: "UNDER_REVIEW", label: "Under Review" },
+  {
+    value: "TECHNICAL_INTERVIEW_SCHEDULED",
+    label: "Technical Interview Scheduled",
+  },
+  { value: "TECHNICAL_INTERVIEWED", label: "Technical Interviewed" },
+  { value: "COMMON_INTERVIEW_SCHEDULED", label: "Common Interview Scheduled" },
+  { value: "COMMON_INTERVIEWED", label: "Common Interviewed" },
+  { value: "ACCEPTED", label: "Accepted" },
+  { value: "REJECTED", label: "Rejected" },
+  { value: "WAITLISTED", label: "Waitlisted" },
+  { value: "WITHDRAWN", label: "Withdrawn" },
+  { value: "NEEDS_FOLLOW_UP", label: "Needs Follow-up" },
+];
 
 export default function ApplicationList({
   initialData,
+  initialFilters,
 }: {
-  initialData: { applications: Application[]; statistics: Statistics } | { success: false; message: string }
+  initialData: ApplicationsResult;
+  initialFilters: Partial<AdminFilters> & { page?: number; pageSize?: number };
 }) {
-  const [applications, setApplications] = useState<Application[]>(initialData.success ? initialData.applications : [])
-  const [statistics, setStatistics] = useState<Statistics | null>(
-    initialData.success ? initialData.statistics : null
-  )
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(initialData.success ? null : initialData.message)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("ALL")
-  const [courseFilter, setCourseFilter] = useState<string>("ALL")
-
-  const getStatusBadge = (status: string) => {
-    const colorClass = statusColors[status] || "bg-gray-100 text-gray-700"
-    return (
-      <Badge className={colorClass} variant="outline">
-        {status.replace(/_/g, " ")}
-      </Badge>
-    )
-  }
-
-  // Filter applications based on search term and filters
-  const filteredApplications = applications.filter((app) => {
-    const matchesSearch =
-      app.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "ALL" || app.status === statusFilter
-    const matchesCourse = courseFilter === "ALL" || app.course.id === courseFilter
-    return matchesSearch && matchesStatus && matchesCourse
-  })
-
-  // Refresh data on demand
-  const handleRefresh = async () => {
-    setLoading(true)
-    const result = await fetchApplications()
-    if (result.success) {
-      setApplications(result.applications)
-      setStatistics(result.statistics)
-      setError(null)
-    } else {
-      setError(result.message)
+  const [applications, setApplications] = useState<Application[]>(
+    initialData.success ? initialData.applications : [],
+  );
+  const [filters, setFilters] = useState<AdminFilters>({
+    ...DEFAULT_ADMIN_FILTERS,
+    ...initialFilters,
+  });
+  const [page, setPage] = useState(initialFilters.page || 1);
+  const [pageSize, setPageSize] = useState(initialFilters.pageSize || 25);
+  const [hideDetails, setHideDetails] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(
+    initialData.success ? null : initialData.message,
+  );
+  const [selectedApplicationIds, setSelectedApplicationIds] = useState<
+    string[]
+  >([]);
+  const [bulkStatus, setBulkStatus] = useState("");
+  const { toast } = useToast();
+  const filtered = useMemo(
+    () => filterAdminApplications(applications, filters),
+    [applications, filters],
+  );
+  const pagination = paginateAdminRows(filtered, page, pageSize);
+  const cohorts = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          applications
+            .filter(
+              (row) =>
+                filters.course === "ALL" || row.course?.id === filters.course,
+            )
+            .map(cohortOf),
+        ),
+      ).sort((a, b) => a.localeCompare(b, "en", { numeric: true })),
+    [applications, filters.course],
+  );
+  const years = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          applications
+            .map((row) => kigaliDay(row.createdAt).slice(0, 4))
+            .filter(Boolean),
+        ),
+      )
+        .sort()
+        .reverse(),
+    [applications],
+  );
+  const courses = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          applications
+            .filter((row) => row.course)
+            .map((row) => [row.course!.id, row.course!]),
+        ).values(),
+      ).sort((a, b) => a.name.localeCompare(b.name)),
+    [applications],
+  );
+  const visibleIds = pagination.rows.map((row) => row.id);
+  const selectedVisible = visibleIds.filter((id) =>
+    selectedApplicationIds.includes(id),
+  ).length;
+  const allSelected =
+    visibleIds.length > 0 && selectedVisible === visibleIds.length;
+  const selectedNeedingChange = applications.filter(
+    (row) =>
+      selectedApplicationIds.includes(row.id) && row.status !== bulkStatus,
+  ).length;
+  const updateFilter = (key: keyof AdminFilters, value: string) => {
+    setFilters((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === "course" ? { cohort: "ALL" } : {}),
+    }));
+    setPage(1);
+    setSelectedApplicationIds([]);
+  };
+  const listHref = useMemo(() => {
+    const params = new URLSearchParams();
+    for (const key of Object.keys(
+      DEFAULT_ADMIN_FILTERS,
+    ) as (keyof AdminFilters)[])
+      if (filters[key] !== DEFAULT_ADMIN_FILTERS[key])
+        params.set(key, filters[key] || "ALL");
+    if (pagination.page > 1) params.set("page", String(pagination.page));
+    if (pagination.size !== 25) params.set("pageSize", String(pagination.size));
+    return `/admin/applications${params.size ? "?" + params.toString() : ""}`;
+  }, [filters, pagination.page, pagination.size]);
+  useEffect(() => {
+    window.history.replaceState(null, "", listHref);
+  }, [listHref]);
+  useEffect(() => {
+    setSelectedApplicationIds((current) =>
+      current.filter((id) => applications.some((row) => row.id === id)),
+    );
+  }, [applications]);
+  const lastRefresh = useRef(Date.now());
+  const refreshActive = useRef(false);
+  const refresh = async (background = false) => {
+    if (refreshActive.current) return;
+    refreshActive.current = true;
+    lastRefresh.current = Date.now();
+    if (!background) setLoading(true);
+    try {
+      const result = await fetchApplications();
+      if (result.success) {
+        setApplications(result.applications);
+        setError(null);
+      } else setError(result.message);
+    } catch {
+      setError("Unable to refresh applications. Please try again.");
+    } finally {
+      refreshActive.current = false;
+      setLoading(false);
     }
-    setLoading(false)
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Error</CardTitle>
-          <CardDescription>Failed to load applications</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>{error}</p>
-          <Button onClick={handleRefresh} className="mt-4">
-            Try Again
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
+  };
+  useEffect(() => {
+    const refreshInBackground = () => {
+      if (
+        document.visibilityState === "visible" &&
+        !isBulkUpdating &&
+        Date.now() - lastRefresh.current >= 5000
+      )
+        void refresh(true);
+    };
+    const timer = setInterval(refreshInBackground, 5000);
+    window.addEventListener("focus", refreshInBackground);
+    document.addEventListener("visibilitychange", refreshInBackground);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", refreshInBackground);
+      document.removeEventListener("visibilitychange", refreshInBackground);
+    };
+  }, [isBulkUpdating]);
+  const toggle = (id: string, checked: boolean) =>
+    setSelectedApplicationIds((current) =>
+      checked
+        ? Array.from(new Set([...current, id]))
+        : current.filter((value) => value !== id),
+    );
+  const togglePage = (checked: boolean) =>
+    setSelectedApplicationIds((current) =>
+      checked
+        ? Array.from(new Set([...current, ...visibleIds]))
+        : current.filter((id) => !visibleIds.includes(id)),
+    );
+  const bulkUpdate = async () => {
+    if (!selectedApplicationIds.length || !bulkStatus) return;
+    setIsBulkUpdating(true);
+    try {
+      const result = await updateApplicationStatuses(
+        selectedApplicationIds,
+        bulkStatus,
+      );
+      toast({
+        title: result.success ? "Updated" : "Unable to update",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+      if (result.success) {
+        setSelectedApplicationIds([]);
+        setBulkStatus("");
+        await refresh();
+      }
+    } catch {
+      toast({
+        title: "Unable to update",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+  const selectFilter = (
+    key: keyof AdminFilters,
+    label: string,
+    options: { value: string; label: string }[],
+  ) => (
+    <AdminSelect
+      label={label}
+      value={filters[key] || "ALL"}
+      onChange={(value) => updateFilter(key, value)}
+      options={options}
+    />
+  );
   return (
-    <div className="space-y-6">
-      {/* Statistics Section */}
-      {statistics && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Application Statistics</CardTitle>
-            <CardDescription>Overview of applicant data</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Applicants</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{statistics.totalApplicants}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="space-y-6">
-              {/* Applicants by Status */}
-              <div>
-                <h3 className="text-lg font-medium">Applicants by Status</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                  {Object.entries(statistics.applicantsByStatus).map(([status, count]) => (
-                    <Card key={status}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between items-center">
-                          <span>{status.replace(/_/g, " ")}</span>
-                          <Badge variant="secondary">{count}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              {/* Applicants by Course */}
-              <div>
-                <h3 className="text-lg font-medium">Applicants by Course</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                  {Object.entries(statistics.applicantsByCourse).map(([course, count]) => (
-                    <Card key={course}>
-                      <CardContent className="pt-6">
-                        <div className="flex justify-between items-center">
-                          <span>{course}</span>
-                          <Badge variant="secondary">{count}</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              {/* Applicants by Status and Course */}
-              <div>
-                <h3 className="text-lg font-medium">Applicants by Status and Course</h3>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Status / Course</TableHead>
-                        {statistics.courses.map((course) => (
-                          <TableHead key={course.id}>{course.name}</TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.keys(statistics.applicantsByStatus).map((status) => (
-                        <TableRow key={status}>
-                          <TableCell>{status.replace(/_/g, " ")}</TableCell>
-                          {statistics.courses.map((course) => (
-                            <TableCell key={course.id}>
-                              {statistics.applicantsByStatusAndCourse[`${status}__${course.name}`] || 0}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className={styles.workspace}>
+      <header className={styles.heading}>
+        <div>
+          <h1>Applications</h1>
+          <p>
+            Review applicants, compare cohorts, and follow every application.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2"><Button type="button" variant={filters.focus === "OPEN" ? "default" : "outline"} aria-pressed={filters.focus === "OPEN"} title="Show only applications belonging to cohorts that are open, have spaces, and have not closed." onClick={()=>updateFilter("focus",filters.focus === "OPEN" ? "ALL" : "OPEN")}>Focus: open cohorts</Button><Button type="button" variant="outline" aria-pressed={hideDetails} onClick={()=>setHideDetails(value=>!value)}>{hideDetails?<Eye size={16} className="mr-2"/>:<EyeOff size={16} className="mr-2"/>}{hideDetails?"Show details":"Hide details"}</Button>
+        <Button variant="outline" onClick={() => void refresh()} disabled={loading}>
+          <RefreshCw
+            size={15}
+            className={loading ? "mr-2 animate-spin" : "mr-2"}
+          />
+          Refresh
+        </Button></div>
+      </header>
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+        >
+          {error}{" "}
+          <Button variant="outline" onClick={() => void refresh()}>
+            Try again
+          </Button>
+        </div>
       )}
-
-      {/* Application List */}
-      <Card>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6 pt-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or email..."
-                className="pl-8 bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <div className="w-[180px]">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Statuses</SelectItem>
-                    <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
-                    <SelectItem value="TECHNICAL_INTERVIEW_SCHEDULED">Technical Interview Scheduled</SelectItem>
-                    <SelectItem value="TECHNICAL_INTERVIEWED">Technical Interviewed</SelectItem>
-                    <SelectItem value="COMMON_INTERVIEW_SCHEDULED">Common Interview Scheduled</SelectItem>
-                    <SelectItem value="COMMON_INTERVIEWED">Common Interviewed</SelectItem>
-                    <SelectItem value="ACCEPTED">Accepted</SelectItem>
-                    <SelectItem value="REJECTED">Rejected</SelectItem>
-                    <SelectItem value="WAITLISTED">Waitlisted</SelectItem>
-                    <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
-                    <SelectItem value="NEEDS_FOLLOW_UP">Needs Follow-up</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="w-[180px]">
-                <Select value={courseFilter} onValueChange={setCourseFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by course" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Courses</SelectItem>
-                    {statistics?.courses.map((course) => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={() => generateDownloadExcel(filteredApplications, statusFilter)}>
-                <Download />
-                <span>Export to Excel</span>
-              </Button>
-            </div>
+      <section className={styles.toolbar} aria-label="Application filters">
+        <div className={styles.filters}>
+          <label className={styles.filter}>
+            Search applicants
+            <Input
+              type={hideDetails?"password":"search"}
+              placeholder="Name or email"
+              value={filters.search}
+              onChange={(event) => updateFilter("search", event.target.value)}
+            />
+          </label>
+          {selectFilter("course", "Program", [
+            { value: "ALL", label: "All programs" },
+            ...courses.map((course) => ({
+              value: course.id,
+              label: course.name,
+            })),
+            ...(applications.some((row) => !row.course)
+              ? [{ value: "unknown", label: "Data not available" }]
+              : []),
+          ])}
+          {selectFilter("cohort", "Cohort", [
+            { value: "ALL", label: "All cohorts" },
+            ...cohorts.map((value) => ({ value, label: cohortName(value) })),
+          ])}
+          {selectFilter("status", "Application status", [
+            { value: "ALL", label: "All statuses" },
+            ...applicationStatuses,
+          ])}
+          {selectFilter("year", "Submission year", [
+            { value: "ALL", label: "All years" },
+            ...years.map((value) => ({ value, label: value })),
+          ])}
+          <div className={styles.filter}>
+            <span>Applied from (Kigali)</span>
+            <AdminDatePicker
+              label="Applied from (Kigali)"
+              value={filters.from}
+              onChange={(value) => updateFilter("from", value)}
+            />
           </div>
-
-          {loading ? (
-            <div className="flex justify-center items-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredApplications.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No applications found.</div>
-          ) : (
-            <div className="rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Course</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date Applied</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+          <div className={styles.filter}>
+            <span>Applied through (Kigali)</span>
+            <AdminDatePicker
+              label="Applied through (Kigali)"
+              value={filters.to}
+              onChange={(value) => updateFilter("to", value)}
+            />
+          </div>
+          {selectFilter("sort", "Sort applications", [
+            { value: "newest", label: "Newest first" },
+            { value: "oldest", label: "Oldest first" },
+            { value: "name", label: "Applicant A–Z" },
+            { value: "cohort", label: "Cohort number" },
+            { value: "course", label: "Program A–Z" },
+            { value: "status", label: "Status A–Z" },
+          ])}
+        </div>
+        {filters.from && filters.to && filters.from > filters.to && (
+          <p role="alert" className="mt-3 text-sm text-red-700">
+            The end date must be on or after the start date.
+          </p>
+        )}
+        <div className={styles.filterFooter}>
+          <span>
+            Filters apply to analytics, the table, and exported results.
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setFilters(DEFAULT_ADMIN_FILTERS);
+              setPage(1);
+              setSelectedApplicationIds([]);
+            }}
+          >
+            Reset filters
+          </Button>
+        </div>
+      </section>
+      {filters.focus === "OPEN" && <p role="status" className="text-sm text-slate-600">Focus mode shows applications in open cohorts with available spaces. Turn it off to see all records.</p>}
+      <ApplicationAnalytics rows={filtered} total={applications.length} />
+      <section
+        className={styles.panel}
+        aria-labelledby="applications-table-heading"
+        aria-busy={loading}
+      >
+        <div className={styles.tableHeader}>
+          <div>
+            <h2 id="applications-table-heading">Applicant records</h2>
+            <p className={styles.note} role="status">
+              Showing {pagination.start}–{pagination.end} of{" "}
+              {filtered.length.toLocaleString()} matching applications
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            disabled={!filtered.length}
+            onClick={() => generateDownloadExcel(filtered, filters.status)}
+          >
+            <Download size={15} className="mr-2" />
+            Export filtered results
+          </Button>
+        </div>
+        {selectedApplicationIds.length > 0 && (
+          <div className={styles.selection} aria-label="Bulk application status update">
+            <strong>
+              {selectedApplicationIds.length} selected
+            </strong>
+            <AdminSelect
+              label="Change selected status"
+              disabled={isBulkUpdating}
+              value={bulkStatus}
+              onChange={setBulkStatus}
+              options={applicationStatuses}
+              placeholder="Choose status"
+            />
+            <Button
+              onClick={bulkUpdate}
+              aria-describedby="bulk-status-help"
+              disabled={!bulkStatus || !selectedNeedingChange || isBulkUpdating}
+            >
+              {isBulkUpdating ? (
+                <Loader2 className="mr-2 animate-spin" size={15} />
+              ) : null}
+              {selectedNeedingChange ? `Update ${selectedNeedingChange} application${selectedNeedingChange === 1 ? "" : "s"}` : "Update selected"}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setSelectedApplicationIds([])}
+              disabled={isBulkUpdating}
+            >
+              Clear selection
+            </Button>
+            <p id="bulk-status-help" role="status" className="w-full text-sm text-slate-600">{!bulkStatus ? "Choose the new status to apply to your selection." : !selectedNeedingChange ? "All selected applications already have this status. Choose a different status to update them." : `${selectedNeedingChange} of ${selectedApplicationIds.length} selected applications will change. The others already have this status.`}</p>
+          </div>
+        )}
+        {!filtered.length ? (
+          <p className={styles.empty}>No applications match these filters.</p>
+        ) : (
+          <div className={styles.tableScroll}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <Checkbox
+                      checked={
+                        allSelected
+                          ? true
+                          : selectedVisible
+                            ? "indeterminate"
+                            : false
+                      }
+                      onCheckedChange={(checked) =>
+                        togglePage(checked === true)
+                      }
+                      aria-label="Select all applications on this page"
+                      disabled={isBulkUpdating}
+                    />
+                  </TableHead>
+                  <TableHead>Applicant</TableHead>
+                  <TableHead>Program</TableHead>
+                  <TableHead>Cohort</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Applied · Kigali</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pagination.rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={
+                      selectedApplicationIds.includes(row.id)
+                        ? "selected"
+                        : undefined
+                    }
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedApplicationIds.includes(row.id)}
+                        onCheckedChange={(checked) =>
+                          toggle(row.id, checked === true)
+                        }
+                        disabled={isBulkUpdating}
+                        aria-label={hideDetails?"Select hidden applicant":`Select ${hideDetails?"Applicant hidden":row.fullName}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-semibold text-slate-800">
+                        {hideDetails?"Applicant hidden":row.fullName}
+                      </span>
+                      <span className="mt-1 block text-sm text-slate-500">
+                        {hideDetails?"Email hidden":<ContactLink value={row.email} kind="email"/>}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {row.course?.name || "Data not available"}
+                      <span className="mt-1 block text-sm text-slate-500">From: {row.entrySourceDomain || "Data not available"}</span>
+                    </TableCell>
+                    <TableCell>{cohortName(cohortOf(row))}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`${styles.status} ${(
+                          statusColors[row.status] ||
+                          "bg-slate-100 text-slate-700"
+                        )
+                          .split(" ")
+                          .filter(
+                            (value) =>
+                              !value.startsWith("shadow") &&
+                              !value.startsWith("py-"),
+                          )
+                          .join(" ")}`}
+                      >
+                        {applicationStatuses.find(
+                          (status) => status.value === row.status,
+                        )?.label || row.status.replaceAll("_", " ")}
+                      </span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {kigaliDay(row.createdAt)}
+                      <span className="mt-1 block text-sm text-slate-500">
+                        {kigaliDateTimeInput(row.createdAt).slice(11)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Link
+                        href={`/admin/applications/${row.id}?from=${encodeURIComponent(listHref)}`}
+                      >
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          aria-label={`View application for ${hideDetails?"Applicant hidden":row.fullName}`}
+                        >
+                          View
+                          <ArrowUpRight size={14} className="ml-1" />
+                        </Button>
+                      </Link>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredApplications.map((application) => (
-                    <TableRow key={application.id}>
-                      <TableCell className="font-medium">{application.fullName}</TableCell>
-                      <TableCell>{application.email}</TableCell>
-                      <TableCell>{application.course?.name || "Unknown"}</TableCell>
-                      <TableCell>{getStatusBadge(application.status)}</TableCell>
-                      <TableCell>{format(new Date(application.createdAt), "MMM d, yyyy")}</TableCell>
-                      <TableCell className="text-right">
-                        <Link href={`/admin/applications/${application.id}`}>
-                          <Button size="sm">View Details</Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        <nav className={styles.pagination} aria-label="Applications pagination">
+          <div className="w-40">
+            <AdminSelect
+              label="Rows per page"
+              value={String(pagination.size)}
+              onChange={(value) => {
+                setPageSize(Number(value));
+                setPage(1);
+              }}
+              options={[10, 25, 50, 100].map((size) => ({
+                value: String(size),
+                label: String(size),
+              }))}
+            />
+          </div>
+          <div>
+            <span aria-live="polite">
+              Page {pagination.page} of {pagination.pages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Previous page"
+              disabled={pagination.page === 1}
+              onClick={() => setPage(pagination.page - 1)}
+            >
+              <ChevronLeft size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Next page"
+              disabled={pagination.page === pagination.pages}
+              onClick={() => setPage(pagination.page + 1)}
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </div>
+        </nav>
+      </section>
     </div>
-  )
+  );
 }

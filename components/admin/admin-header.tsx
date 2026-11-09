@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { adminSectionActive } from "@/lib/admin-navigation"
 import { Home, Users, BookOpen, Mail } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePathname } from "next/navigation"
@@ -32,35 +33,23 @@ export default function AdminHeader() {
   };
 
   return (
-    <header className="bg-white shadow-sm">
+    <header className="border-b border-slate-200 bg-white shadow-sm">
       <div className="container mx-auto py-2 px-4">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-wrap items-center justify-between gap-4 py-2">
           <div className="flex items-center gap-6">
-            <img src="/logo.png" alt="logo" width={100} height={20} />
-            <Link href="/" className="font-bold text-xl flex items-center text-gray-700">
+            <Link href="/admin/applications" aria-label="SheCanCode admin applications"><img src="/logo.png" alt="SheCanCode" width={100} height={73}/></Link>
+            {/* <Link href="/" className="font-bold text-xl flex items-center text-gray-700">
               <Users className="mr-2 h-5 w-5" />
               <span>Admin Panel</span>
-            </Link>
+            </Link> */}
           </div>
-          <nav>
-            <ul className="flex space-x-4">
+          <nav aria-label="Admin navigation" className="order-3 w-full lg:order-none lg:w-auto">
+            <ul className="flex flex-wrap items-center gap-2">
               {navLinks.map(({ href, label, icon: Icon }) => (
                 <li key={href}>
-                  <Link href={href}>
-                    <Button
-                      variant="date"
-                      size="sm"
-                      className={cn(
-                        "flex items-center text-gray-700",
-                        pathname === href
-                          ? "bg-primary text-white"
-                          : "hover:bg-primary hover:text-white"
-                      )}
-                    >
-                      <Icon className="mr-2 h-4 w-4" />
-                      {label}
-                    </Button>
-                  </Link>
+                  <Button variant="date" size="sm" asChild className={cn("min-h-11 text-sm",adminSectionActive(pathname,href)?"bg-[#193f60] text-white hover:bg-[#285777]":"text-slate-700 hover:bg-slate-100")}>
+                    <Link href={href} prefetch={true} aria-current={adminSectionActive(pathname,href)?"page":undefined}><Icon className="mr-2 h-4 w-4" aria-hidden="true"/>{label}</Link>
+                  </Button>
                 </li>
               ))}
             </ul>

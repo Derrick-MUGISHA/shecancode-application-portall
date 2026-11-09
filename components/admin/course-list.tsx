@@ -1,337 +1,132 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { format } from "date-fns"
-import { Loader2, Plus, Pencil, Trash2 } from "lucide-react"
-
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import Link from "next/link"
+import { useEffect, useMemo, useState, useRef } from "react"
+import { Plus, Pencil, Trash2, ChevronDown, ChevronRight, Loader2, Layers3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { acceptingApplications, kigaliDateTimeInput } from "@/lib/program-availability"
+import { availableProgram, visibleAdminCohorts, cohortSettingsFor, courseDetailsSchema } from "@/lib/cohorts"
+import type { Program, CohortOption } from "@/lib/program-types"
+import { paginateAdminRows } from "@/lib/admin-applications"
 import { toast } from "@/components/ui/use-toast"
+import CohortNumberInput from "./cohort-number-input"
+import AdminSelect from "./admin-select"
+import AdminDatePicker from "./admin-date-picker"
+import styles from "./admin.module.css"
 
-type Course = {
-  id: string
-  name: string
-  description: string | null
-  createdAt: string
-  updatedAt: string
-}
+export type AdminProgram=Program & {createdAt?:string}
+type Errors=Record<string,string>
+const fieldErrors=(issues:{path:PropertyKey[];message:string}[])=>Object.fromEntries(issues.map(issue=>[String(issue.path[0]),issue.message]))
 
-const formSchema = z.object({
-  name: z.string().min(2, { message: "Course name must be at least 2 characters." }),
-  description: z.string().optional(),
-})
-
-type FormValues = z.infer<typeof formSchema>
-
-export default function CourseList() {
-  const router = useRouter()
-  const [courses, setCourses] = useState<Course[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null)
-
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-    },
-  })
-
-  useEffect(() => {
-    fetchCourses()
-  }, [])
-
-  useEffect(() => {
-    if (editingCourse) {
-      form.reset({
-        name: editingCourse.name,
-        description: editingCourse.description || "",
-      })
-    } else {
-      form.reset({
-        name: "",
-        description: "",
-      })
+export default function CourseList({initialPrograms}:{initialPrograms?:AdminProgram[]}={}) {
+  const [programs,setPrograms]=useState<AdminProgram[]>(initialPrograms||[])
+  const [loading,setLoading]=useState(!initialPrograms)
+  const [loadError,setLoadError]=useState("")
+  const [query,setQuery]=useState("")
+  const [focusOpen,setFocusOpen]=useState(false)
+  const [availability,setAvailability]=useState("ALL")
+  const [sort,setSort]=useState("name")
+  const [page,setPage]=useState(1)
+  const [expanded,setExpanded]=useState<string|null>(initialPrograms?.[0]?.id||null)
+  const [programDialog,setProgramDialog]=useState(false)
+  const [editingProgram,setEditingProgram]=useState<AdminProgram|null>(null)
+  const [programForm,setProgramForm]=useState({name:"",description:"",isOpen:true})
+  const [cohortProgram,setCohortProgram]=useState<AdminProgram|null>(null)
+  const [editingCohort,setEditingCohort]=useState<CohortOption|null>(null)
+  const [cohortForm,setCohortForm]=useState({number:"1",capacity:"",closesAt:"",isOpen:true})
+  const [errors,setErrors]=useState<Errors>({})
+  const [saveError,setSaveError]=useState("")
+  const [saving,setSaving]=useState(false)
+  const [deleting,setDeleting]=useState<{program:AdminProgram;cohort?:CohortOption}|null>(null)
+  const lastLoad=useRef(Date.now())
+  const inFlight=useRef(false)
+  const load=async(quiet=false)=>{
+    if(inFlight.current)return
+    inFlight.current=true;lastLoad.current=Date.now()
+    if(!quiet)setLoading(true)
+    try {const response=await fetch("/api/courses",{cache:"no-store"});if(!response.ok)throw Error("Unable to load programs.");const data=await response.json();setPrograms(data);setExpanded(current=>current||data[0]?.id||null);setLoadError("")}
+    catch(error){setLoadError(error instanceof Error?error.message:"Unable to load programs.")}
+    finally{inFlight.current=false;setLoading(false)}
+  }
+  useEffect(()=>{void load(Boolean(initialPrograms))},[initialPrograms])
+  useEffect(()=>{
+    const refresh=()=>{if(document.visibilityState==="visible"&&!saving&&Date.now()-lastLoad.current>=5000)void load(true)}
+    const timer=setInterval(refresh,5000);window.addEventListener("focus",refresh);document.addEventListener("visibilitychange",refresh)
+    return()=>{clearInterval(timer);window.removeEventListener("focus",refresh);document.removeEventListener("visibilitychange",refresh)}
+  },[saving])
+  const filtered=useMemo(()=>programs.filter(program=>`${program.name} ${(program.cohorts||[]).map(cohort=>cohort.cohortLabel).join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()) && (!focusOpen || visibleAdminCohorts(program,true).length>0) && (availability==="ALL" || (availability==="OPEN"?availableProgram(program):!availableProgram(program)))).sort((a,b)=>sort==="newest"?new Date(b.createdAt||0).getTime()-new Date(a.createdAt||0).getTime():sort==="cohorts"?(b.cohorts?.length||0)-(a.cohorts?.length||0):a.name.localeCompare(b.name)),[programs,query,availability,sort,focusOpen])
+  const pagination=paginateAdminRows(filtered,page,10)
+  const openProgram=(program?:AdminProgram)=>{setEditingProgram(program||null);setProgramForm({name:program?.name||"",description:program?.description||"",isOpen:program?.isOpen!==false});setErrors({});setSaveError("");setProgramDialog(true)}
+  const openCohort=(program:AdminProgram,cohort?:CohortOption)=>{setCohortProgram(program);setEditingCohort(cohort||null);setCohortForm({number:String(cohort?.number||Math.max(0,...(program.cohorts||[]).map(item=>item.number))+1),capacity:cohort?.capacity==null?"":String(cohort.capacity),closesAt:kigaliDateTimeInput(cohort?.closesAt),isOpen:cohort?cohort.isOpen:true});setErrors({});setSaveError("")}
+  const fail=(map:Errors)=>{setErrors(map);const first=Object.keys(map)[0];requestAnimationFrame(()=>document.getElementById(`admin-${first}`)?.focus())}
+  const save=async(event:React.FormEvent,kind:"program"|"cohort")=>{
+    event.preventDefault();setSaveError("");setErrors({})
+    let payload:unknown
+    if(kind==="program"){
+      const result=courseDetailsSchema.safeParse(programForm)
+      if(!result.success){fail(fieldErrors(result.error.issues));return}payload=result.data
+    }else{
+      const date=cohortForm.closesAt?new Date(cohortForm.closesAt+"+02:00"):null
+      if(date&&Number.isNaN(date.getTime())){fail({closesAt:"Choose a valid closing date and time."});return}
+      const result=cohortSettingsFor(editingCohort||undefined).safeParse({number:Number(cohortForm.number),capacity:cohortForm.capacity?Number(cohortForm.capacity):null,closesAt:date?.toISOString()??null,isOpen:cohortForm.isOpen})
+      if(!result.success){fail(fieldErrors(result.error.issues));return}
+      if(result.data.capacity!=null&&result.data.capacity<(editingCohort?.applicationCount||0)){fail({capacity:"Spaces cannot be fewer than applications already received by this cohort."});return}
+      payload=result.data
     }
-  }, [editingCourse, form])
-
-  const fetchCourses = async () => {
+    setSaving(true)
     try {
-      setLoading(true)
-      const response = await fetch("/api/courses")
-      if (!response.ok) {
-        throw new Error("Failed to fetch courses")
-      }
-      const data = await response.json()
-      setCourses(data)
-    } catch (error) {
-      console.error("Error fetching courses:", error)
-      setError("Failed to load courses. Please try again later.")
-    } finally {
-      setLoading(false)
-    }
+      const url=kind==="program"?`/api/courses${editingProgram?`/${editingProgram.id}`:""}`:`/api/courses/${cohortProgram!.id}/cohorts${editingCohort?`/${editingCohort.id}`:""}`
+      const response=await fetch(url,{method:(kind==="program"?editingProgram:editingCohort)?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})
+      if(!response.ok){const data=await response.json();if(data.errors)fail(Object.fromEntries(Object.entries(data.errors).map(([key,value])=>[key,(value as string[])[0]])));setSaveError(data.message||"Unable to save. Please try again.");return}
+      toast({title:kind==="program"?"Program saved":"Cohort saved",description:kind==="cohort"?"This cohort belongs to its program and has its own capacity and deadline.":"Program details updated."})
+      setProgramDialog(false);if(cohortProgram)setExpanded(cohortProgram.id);setCohortProgram(null);await load(true)
+    }catch{setSaveError("Unable to save. Check your connection and try again.")}
+    finally{setSaving(false)}
   }
-
-  const onSubmit = async (data: FormValues) => {
-    setIsSubmitting(true)
-    try {
-      const url = editingCourse ? `/api/courses/${editingCourse.id}` : "/api/courses"
-
-      const method = editingCourse ? "PATCH" : "POST"
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to save course")
-      }
-
-      toast({
-        title: `Course ${editingCourse ? "Updated" : "Created"}`,
-        description: `The course has been successfully ${editingCourse ? "updated" : "created"}.`,
-      })
-
-      setIsDialogOpen(false)
-      setEditingCourse(null)
-      fetchCourses()
-    } catch (error) {
-      console.error("Error saving course:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save course",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
+  const remove=async()=>{
+    if(!deleting)return;setSaving(true);setSaveError("")
+    try{const response=await fetch(`/api/courses/${deleting.program.id}${deleting.cohort?`/cohorts/${deleting.cohort.id}`:""}`,{method:"DELETE"});if(!response.ok){setSaveError((await response.json()).message||"Unable to delete.");return}setDeleting(null);await load(true)}
+    catch{setSaveError("Unable to delete. Please try again.")}finally{setSaving(false)}
   }
-
-  const handleEdit = (course: Course) => {
-    setEditingCourse(course)
-    setIsDialogOpen(true)
-  }
-
-  const handleDelete = async () => {
-    if (!courseToDelete) return
-
-    try {
-      const response = await fetch(`/api/courses/${courseToDelete.id}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to delete course")
-      }
-
-      toast({
-        title: "Course Deleted",
-        description: "The course has been successfully deleted.",
-      })
-
-      setIsDeleteDialogOpen(false)
-      setCourseToDelete(null)
-      fetchCourses()
-    } catch (error) {
-      console.error("Error deleting course:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete course",
-        variant: "destructive",
-      })
-    }
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Error</CardTitle>
-          <CardDescription>Failed to load courses</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p>{error}</p>
-          <Button onClick={() => fetchCourses()} className="mt-4">
-            Try Again
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-end">
-        {/* <div>
-          <CardTitle>All Courses</CardTitle>
-          <CardDescription>Manage courses available for applications</CardDescription>
-        </div> */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              onClick={() => {
-                setEditingCourse(null)
-                form.reset({ name: "", description: "" })
-              }}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Course
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingCourse ? "Edit Course" : "Add New Course"}</DialogTitle>
-              <DialogDescription>
-                {editingCourse ? "Update the course details below." : "Fill in the details to create a new course."}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700">Course Name</FormLabel>
-                      <FormControl>
-                        <Input className="bg-white placeholder:text-muted-foreground text-gray-700 border border-gray-300" placeholder="e.g., Web Development" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700">Description</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Describe the course..." className="min-h-[100px] placeholder:text-muted-foreground text-gray-700 border border-gray-300" {...field} />
-                      </FormControl>
-                      <FormDescription>Provide details about the course content and objectives</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {editingCourse ? "Updating..." : "Creating..."}
-                      </>
-                    ) : editingCourse ? (
-                      "Update Course"
-                    ) : (
-                      "Create Course"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : courses.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No courses found. Click &quot;Add Course&quot; to create one.
-          </div>
-        ) : (
-          <div className="rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {courses.map((course) => (
-                  <TableRow key={course.id}>
-                    <TableCell className="font-medium">{course.name}</TableCell>
-                    <TableCell>{course.description || "No description"}</TableCell>
-                    <TableCell>{format(new Date(course.createdAt), "MMM d, yyyy")}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="date" size="sm" onClick={() => handleEdit(course)}>
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="date"
-                          size="sm"
-                          onClick={() => {
-                            setCourseToDelete(course)
-                            setIsDeleteDialogOpen(true)
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </CardContent>
-
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Course</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this course? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex space-x-2 justify-end">
-            <Button variant="date" className="border border-gray-300 bg-white text-gray-700" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  )
+  const message=(field:string)=>errors[field]?<p id={`admin-${field}-error`} role="alert" className="text-sm text-red-700">{errors[field]}</p>:null
+  return <div className={styles.workspace}>
+    <header className={styles.heading}><div><h1>Programs & cohorts</h1><p>Create a program once, then add cohort-1, cohort-2, and more inside it.</p></div><Button onClick={()=>openProgram()}><Plus size={16} className="mr-2"/>Add program</Button></header>
+    <div className={styles.toolbar}><div className={styles.filters}>
+      <label className={styles.filter}>Search programs or cohorts<Input type="search" value={query} placeholder="Program or cohort" onChange={event=>{setQuery(event.target.value);setPage(1)}}/></label>
+      <AdminSelect label="Availability" value={availability} onChange={value=>{setAvailability(value);setPage(1)}} options={[{value:"ALL",label:"All programs"},{value:"OPEN",label:"Accepting applications"},{value:"CLOSED",label:"Closed or full"}]}/>
+      <AdminSelect label="Sort programs" value={sort} onChange={value=>{setSort(value);setPage(1)}} options={[{value:"name",label:"Program A–Z"},{value:"newest",label:"Newest first"},{value:"cohorts",label:"Most cohorts"}]}/>
+    </div><label className="mt-4 flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm"><Checkbox checked={focusOpen} onCheckedChange={value=>{setFocusOpen(value===true);setPage(1)}}/><span><strong className="font-medium">Focus mode: open cohorts only</strong><span className="mt-1 block text-slate-500">Show active cohorts with spaces remaining. Keep edit and delete actions available.</span></span></label></div>
+    {loadError&&<p role="alert">{loadError} <Button variant="outline" onClick={()=>load()}>Retry</Button></p>}
+    {loading?<p role="status" className={styles.empty}>Loading programs…</p>:!filtered.length?<p className={styles.empty}>No programs match these filters.</p>:<div className={styles.programList}>{pagination.rows.map(program=><article key={program.id} className={styles.program}>
+      <div className={styles.programTop}><div><h2>{program.name}</h2>{program.description&&<p>{program.description}</p>}<p>{program.cohorts?.length||0} {(program.cohorts?.length||0)===1?"cohort":"cohorts"} · {(program.cohorts||[]).filter(cohort=>acceptingApplications(cohort)).length} open · {program.applicationCount||0} applications{program.isOpen===false?" · Program hidden":""}</p></div><div className={styles.programActions}>
+        <Button variant="outline" onClick={()=>setExpanded(expanded===program.id?null:program.id)} aria-expanded={expanded===program.id||focusOpen} disabled={focusOpen} aria-controls={`cohorts-${program.id}`}><Layers3 size={16} className="mr-2"/>Cohorts<ChevronDown size={15} className="ml-2"/></Button>
+        <Button onClick={()=>openCohort(program)} aria-label={`Add cohort to ${program.name}`}><Plus size={16} className="mr-2"/>Add cohort</Button>
+        <Button variant="outline" onClick={()=>openProgram(program)} aria-label={`Edit program ${program.name}`}><Pencil size={16} className="mr-2"/>Edit program</Button>
+        <Button variant="outline" disabled={!!program.applicationCount||!!program.cohorts?.length} title="Only programs without applications or cohorts can be deleted" onClick={()=>{setDeleting({program});setSaveError("")}} aria-label={`Delete program ${program.name}`}><Trash2 size={16} className="mr-2"/>Delete program</Button>
+      </div></div>
+      {(expanded===program.id||focusOpen)&&<section id={`cohorts-${program.id}`} className={styles.cohortArea} aria-label={`${program.name} cohorts`}>
+        {!program.cohorts?.length?<p className="text-sm leading-7 text-slate-600">No cohorts yet. Add the first cohort inside this program. Existing applications stay with the program and show “Data not available” for their cohort.</p>:<div className={styles.tableScroll}><Table><TableHeader><TableRow><TableHead>Cohort</TableHead><TableHead>Applications / spaces</TableHead><TableHead>Closes · Kigali</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{visibleAdminCohorts(program,focusOpen).map(cohort=><TableRow key={cohort.id}><TableCell className="font-semibold">{cohort.cohortLabel}</TableCell><TableCell>{cohort.applicationCount} / {cohort.capacity??"Not set"}<p className="mt-1 text-sm text-slate-500">{cohort.spacesLeft==null?"Data not available":`${cohort.spacesLeft} spaces left`}</p></TableCell><TableCell>{cohort.closesAt?kigaliDateTimeInput(cohort.closesAt).replace("T"," · "):"Data not available"}</TableCell><TableCell><span className={`${styles.status} ${acceptingApplications(cohort)&&program.isOpen!==false?"bg-emerald-50 text-emerald-800":"bg-slate-100 text-slate-600"}`}>{acceptingApplications(cohort)&&program.isOpen!==false?"Open":cohort.spacesLeft===0?"Full":"Closed"}</span></TableCell><TableCell><div className="flex gap-2"><Button variant="outline" size="sm" asChild><Link href={`/admin/applications?course=${program.id}&cohort=${cohort.cohortLabel}`}>Applications</Link></Button><Button variant="outline" size="sm" onClick={()=>openCohort(program,cohort)} aria-label={`Edit ${cohort.cohortLabel} in ${program.name}`}><Pencil size={15} className="mr-2"/>Edit</Button><Button variant="outline" size="sm" disabled={cohort.applicationCount>0} onClick={()=>{setDeleting({program,cohort});setSaveError("")}} aria-label={`Delete ${cohort.cohortLabel} in ${program.name}`}><Trash2 size={15} className="mr-2"/>Delete</Button></div></TableCell></TableRow>)}</TableBody></Table></div>}
+      </section>}
+    </article>)}</div>}
+    <nav className={styles.pagination} aria-label="Programs pagination"><span>{pagination.start}–{pagination.end} of {filtered.length} programs</span><div><span>Page {pagination.page} of {pagination.pages}</span><Button variant="outline" aria-label="Previous programs page" disabled={pagination.page===1} onClick={()=>setPage(pagination.page-1)}><ChevronRight size={16} className="rotate-180"/></Button><Button variant="outline" aria-label="Next programs page" disabled={pagination.page===pagination.pages} onClick={()=>setPage(pagination.page+1)}><ChevronRight size={16}/></Button></div></nav>
+    <Dialog open={programDialog} onOpenChange={open=>{if(!saving)setProgramDialog(open)}}><DialogContent className="max-h-[90svh] overflow-y-auto rounded-2xl bg-white sm:max-w-xl"><DialogHeader><DialogTitle>{editingProgram?"Edit program":"Add program"}</DialogTitle><DialogDescription>Program details are shared by all its cohorts. Add cohorts separately inside the program.</DialogDescription></DialogHeader><form noValidate onSubmit={event=>save(event,"program")} className="space-y-5">
+      <div className="space-y-2"><label htmlFor="admin-name" className="text-sm font-medium">Program name</label><Input id="admin-name" value={programForm.name} onChange={event=>setProgramForm({...programForm,name:event.target.value})} aria-invalid={!!errors.name} aria-describedby={errors.name?"admin-name-error":undefined} placeholder="e.g. Web Fundamentals"/>{message("name")}</div>
+      <div className="space-y-2"><label htmlFor="admin-description" className="text-sm font-medium">Description</label><Textarea id="admin-description" value={programForm.description} onChange={event=>setProgramForm({...programForm,description:event.target.value})} className="min-h-28 text-sm"/>{message("description")}</div>
+      <label className="flex items-start gap-3 rounded-xl border p-4 text-sm"><Checkbox checked={programForm.isOpen} onCheckedChange={value=>setProgramForm({...programForm,isOpen:value===true})}/><span>Show this program<p className="mt-1 text-sm text-slate-500">Hide a program to pause applications across all its cohorts.</p></span></label>
+      {saveError&&<p role="alert" className="text-sm text-red-700">{saveError}</p>}<DialogFooter className="border-t pt-4"><Button type="button" variant="outline" disabled={saving} onClick={()=>setProgramDialog(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving?<Loader2 className="mr-2 animate-spin" size={16}/>:null}Save program</Button></DialogFooter>
+    </form></DialogContent></Dialog>
+    <Dialog open={!!cohortProgram} onOpenChange={open=>{if(!open&&!saving)setCohortProgram(null)}}><DialogContent className="max-h-[90svh] overflow-y-auto rounded-2xl bg-white sm:max-w-xl"><DialogHeader><DialogTitle>{editingCohort?`Edit ${editingCohort.cohortLabel}`:"Add cohort"}</DialogTitle><DialogDescription>{cohortProgram?.name} · Each cohort has its own application spaces and closing date.</DialogDescription></DialogHeader><form noValidate onSubmit={event=>save(event,"cohort")} className="space-y-5">
+      <div className="space-y-2"><label htmlFor="admin-number" className="text-sm font-medium">Cohort number</label><CohortNumberInput id="admin-number" disabled={!!editingCohort?.applicationCount} value={cohortForm.number} onValueChange={number=>setCohortForm({...cohortForm,number})} aria-invalid={!!errors.number} aria-describedby={errors.number?"admin-number-error":undefined}/><p className="text-sm text-slate-500">Numbered within this program: cohort-1, cohort-2, and so on.</p>{message("number")}</div>
+      <div className="space-y-2"><label htmlFor="admin-capacity" className="text-sm font-medium">Total application spaces</label><Input id="admin-capacity" type="number" min={Math.max(1,editingCohort?.applicationCount||0)} max={100000} step={1} value={cohortForm.capacity} onChange={event=>setCohortForm({...cohortForm,capacity:event.target.value})} aria-invalid={!!errors.capacity} aria-describedby={errors.capacity?"admin-capacity-error":undefined}/><p className="text-sm text-slate-500">Each submitted application uses one space in this cohort.</p>{message("capacity")}</div>
+      <div className="space-y-2"><label htmlFor="admin-closesAt" className="text-sm font-medium">Closing date and time</label><AdminDatePicker id="admin-closesAt" label="Choose closing date and time" withTime value={cohortForm.closesAt} onChange={value=>setCohortForm({...cohortForm,closesAt:value})} aria-invalid={!!errors.closesAt} aria-describedby={errors.closesAt?"admin-closesAt-error":undefined}/><p className="text-sm text-slate-500">Kigali time (UTC+2). New open cohorts need a future deadline.</p>{message("closesAt")}</div>
+      <label className="flex items-start gap-3 rounded-xl border p-4 text-sm"><Checkbox checked={cohortForm.isOpen} onCheckedChange={value=>setCohortForm({...cohortForm,isOpen:value===true})}/><span>Open this cohort for applications<p className="mt-1 text-sm text-slate-500">Applicants choose this cohort inside its program.</p></span></label>
+      {saveError&&<p role="alert" className="text-sm text-red-700">{saveError}</p>}<DialogFooter className="border-t pt-4"><Button type="button" variant="outline" disabled={saving} onClick={()=>setCohortProgram(null)}>Cancel</Button><Button type="submit" disabled={saving}>{saving?<Loader2 className="mr-2 animate-spin" size={16}/>:null}Save cohort</Button></DialogFooter>
+    </form></DialogContent></Dialog>
+    <Dialog open={!!deleting} onOpenChange={open=>{if(!open&&!saving)setDeleting(null)}}><DialogContent><DialogHeader><DialogTitle>Delete {deleting?.cohort?"cohort":"program"}?</DialogTitle><DialogDescription>Only empty records can be deleted. Close a cohort with applications instead.</DialogDescription></DialogHeader>{saveError&&<p role="alert" className="text-sm text-red-700">{saveError}</p>}<DialogFooter><Button variant="outline" disabled={saving} onClick={()=>setDeleting(null)}>Cancel</Button><Button variant="destructive" disabled={saving} onClick={remove}>Delete</Button></DialogFooter></DialogContent></Dialog>
+  </div>
 }
