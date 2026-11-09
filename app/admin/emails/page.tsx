@@ -2,7 +2,9 @@ import type { Metadata } from "next"
 import AdminHeader from "@/components/admin/admin-header"
 import BreadcrumbWithCustomSeparator, { BreadCrumLinkTypes } from "@/components/BreadcrumbWithCustomSeparator"
 import Link from "next/link"
-import prisma from "@/lib/prisma"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
+import styles from "@/components/admin/admin.module.css"
 import { Toaster } from "@/components/ui/toaster"
 import EmailsTable from "@/components/EmailsTable"
 import { getCourses, getEmails } from "@/lib/actions"
@@ -18,25 +20,21 @@ const breadCrumLinks: BreadCrumLinkTypes[] = [
 ]
 
 export default async function AdminEmailsPage() {
-  const emails = await getEmails();
-  const courses = await getCourses();
+  const [emails, courses] = await Promise.all([getEmails(), getCourses()]);
 
   return (
     <AdminProtectedRoute>
     <div className="min-h-screen flex flex-col">
       <AdminHeader />
       <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} />
-      <main className="flex-1 container mx-auto py-8 px-4">
-        <div className="mb-8">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold tracking-tight text-gray-700">Emails</h1>
-            <Link className="underline text-black" href="/admin/emails/new">
-              Add New Email
-            </Link>
-          </div>
-          <p className="text-muted-foreground pt-2">Manage settings for emails to be sent</p>
+      <main id="admin-main" tabIndex={-1} className="flex-1 w-full min-w-0 py-8 px-4">
+        <div className={styles.workspace}>
+          <header className={styles.heading}>
+            <div><span className={styles.eyebrow}>Email management</span><h1>Emails</h1><p>Prepare the messages you use throughout admissions.</p></div>
+            <Button asChild><Link href="/admin/emails/new"><Plus size={16} className="mr-2" aria-hidden="true"/>Add email</Link></Button>
+          </header>
+          <EmailsTable emails={emails} courses={courses ?? []} />
         </div>
-        <EmailsTable emails={emails} courses={courses} />
         <Toaster />
       </main>
       </div>

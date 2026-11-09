@@ -1,5 +1,8 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
+import { ADMIN_APPLICATIONS_KEY } from "@/hooks/use-admin-applications"
+
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -67,6 +70,7 @@ export default function ApplicationReviewForm({ application, emails }: Applicati
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -92,13 +96,18 @@ export default function ApplicationReviewForm({ application, emails }: Applicati
         if (value instanceof Date) {
           formData.append(key, value.toISOString())
         }
-      } else if (key === "modifiedEmail" && value) {
-        if (value.subject) formData.append("modifiedEmail.subject", value.subject)
-        if (value.body) formData.append("modifiedEmail.body", value.body)
+      } else if (key === "modifiedEmail") {
+        return
       } else if (value !== undefined && value !== null) {
         formData.append(key, value.toString())
       }
     })
+    if (data.modifiedEmail?.subject) {
+      formData.append("modifiedEmail.subject", data.modifiedEmail.subject)
+    }
+    if (data.modifiedEmail?.body) {
+      formData.append("modifiedEmail.body", data.modifiedEmail.body)
+    }
 
     const result = await updateApplication(application.id, formData)
 
@@ -109,6 +118,7 @@ export default function ApplicationReviewForm({ application, emails }: Applicati
     })
 
     if (result.success) {
+      void queryClient.invalidateQueries({ queryKey: ADMIN_APPLICATIONS_KEY })
       router.refresh()
     }
     setIsSubmitting(false)

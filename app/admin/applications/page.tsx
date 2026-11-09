@@ -1,9 +1,10 @@
 import type { Metadata } from "next"
 import ApplicationList from "@/components/admin/application-list"
 import AdminHeader from "@/components/admin/admin-header"
-import { fetchApplications } from "@/lib/actions"
 import BreadcrumbWithCustomSeparator, { BreadCrumLinkTypes } from "@/components/BreadcrumbWithCustomSeparator"
 import AdminProtectedRoute from "@/components/AdminProtectedRoute"
+
+export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
   title: "Admin - Applications",
@@ -14,20 +15,42 @@ const breadCrumLinks: BreadCrumLinkTypes[] = [
   { label: "Applications", link: "/admin/applications", position: "end" },
 ]
 
-export default async function AdminApplicationsPage() {
-  const initialData = await fetchApplications();
+type AdminApplicationsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+const getSearchParam = (params: Record<string, string | string[] | undefined>, key: string) => {
+  const value = params[key]
+  return Array.isArray(value) ? value[0] || "" : value || ""
+}
+
+export default async function AdminApplicationsPage({ searchParams }: AdminApplicationsPageProps) {
+  const params = searchParams ? await searchParams : {}
+  const initialFilters = {
+    search: getSearchParam(params, "search"),
+    status: getSearchParam(params, "status") || "ALL",
+    course: getSearchParam(params, "course") || "ALL",
+    cohort: getSearchParam(params, "cohort") || "ALL",
+    focus: getSearchParam(params,"focus") === "OPEN" ? "OPEN" : "ALL",
+    year: getSearchParam(params, "year") || "ALL",
+    from: /^\d{4}-\d{2}-\d{2}$/.test(getSearchParam(params, "from")) ? getSearchParam(params, "from") : "",
+    to: /^\d{4}-\d{2}-\d{2}$/.test(getSearchParam(params, "to")) ? getSearchParam(params, "to") : "",
+    sort: ["newest","oldest","name","cohort","course","status"].includes(getSearchParam(params,"sort")) ? getSearchParam(params,"sort") : "newest",
+    page: Number(getSearchParam(params,"page")) || 1,
+    pageSize: Number(getSearchParam(params,"pageSize")) || 25,
+  }
 
   return (
     <AdminProtectedRoute>
     <div className="min-h-screen flex flex-col">
-      <AdminHeader />
-      <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} />
-      <main className="flex-1 container mx-auto py-8 px-4">
+       <AdminHeader />
+      {/* <BreadcrumbWithCustomSeparator breadCrumLinks={breadCrumLinks} /> */}
+      <main id="admin-main" tabIndex={-1} className="flex-1 w-full min-w-0 py-8 px-4">
         {/* <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-gray-700">Applications</h1>
           <p className="text-muted-foreground pt-2">View and manage all applicant applications</p>
         </div> */}
-        <ApplicationList initialData={initialData} />
+        <ApplicationList initialFilters={initialFilters} restoreView={Object.keys(params).length === 0} />
       </main>
       </div>
       </AdminProtectedRoute>
