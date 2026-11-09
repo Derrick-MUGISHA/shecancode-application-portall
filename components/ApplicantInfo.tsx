@@ -1,249 +1,179 @@
-"use client"
+"use client";
+import { useAdminPrivacy } from "./admin/privacy-context";
+import type { ReactNode } from "react";
+import type { AdminApplication } from "@/lib/admin-application-types";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { ENTRY_SOURCES, isEntrySource } from "@/lib/entry-sources"
+import { formatIdentificationNumber } from "@/lib/identity-format"
+import ContactLink from "./contact-link";
+import EducationDocumentDownload from "./education-document-download";
+import styles from "./applicant-info.module.css";
 
-import type { Application, Course } from "@prisma/client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { format } from "date-fns"
-
-interface ApplicantInfoProps {
-  application: Application & { course: Course }
-}
-
-export default function ApplicantInfo({ application }: ApplicantInfoProps) {
+const missing = "Data not available";
+const human = (value?: string | null) =>
+  value
+    ? value
+        .replaceAll("_", " ")
+        .toLowerCase()
+        .replace(/^./, (letter) => letter.toUpperCase())
+    : missing;
+const yesNo = (value: boolean | null | undefined) =>
+  value == null ? missing : value ? "Yes" : "No";
+function Field({
+  label,
+  children,
+  wide = false,
+}: {
+  label: string;
+  children: ReactNode;
+  wide?: boolean;
+}) {
+  const hidden = useAdminPrivacy();
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Full Name</h3>
-              <p className="text-base">{application.fullName}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Email</h3>
-              <p className="text-base">{application.email}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Date of Birth</h3>
-              <p className="text-base">{format(new Date(application.dateOfBirth), "PPP")}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Gender</h3>
-              <p className="text-base">{application.gender.replace(/_/g, " ")}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Phone</h3>
-              <p className="text-base">{application.phone}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Nationality</h3>
-              <p className="text-base">{application.nationality}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Refugee Status</h3>
-              <p className="text-base">{application.refugeeStatus ? "Yes" : "No"}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Disability Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Has Disability</h3>
-            <p className="text-base">{application.hasDisability ? "Yes" : "No"}</p>
-          </div>
-          {application.hasDisability && (
-            <>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Disability Type</h3>
-                <p className="text-base">{application.disabilityType?.replace(/_/g, " ")}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Disability Details</h3>
-                <p className="text-base">{application.disabilityDetails || "Not provided"}</p>
-              </div>
-            </>
+    <div className={`${styles.field} ${wide ? styles.wide : ""}`}>
+      <dt>{label}</dt>
+      <dd>
+        {hidden ? (
+          <span aria-label="Value hidden">Hidden</span>
+        ) : (
+          children || missing
+        )}
+      </dd>
+    </div>
+  );
+}
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <Card className={styles.section}>
+      <CardHeader className={styles.header}>
+        <h2 className={styles.title}>{title}</h2>
+      </CardHeader>
+      <CardContent>
+        <dl className={styles.fields}>{children}</dl>
+      </CardContent>
+    </Card>
+  );
+}
+export default function ApplicantInfo({
+  application: a,
+}: {
+  application: AdminApplication;
+}) {
+  const cohort = a.cohort
+    ? `cohort-${a.cohort.number}`
+    : a.cohortLabel || a.course?.cohortLabel || missing;
+  const birthday = a.dateOfBirth
+    ? new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "Africa/Kigali",
+      }).format(new Date(a.dateOfBirth))
+    : missing;
+  const profile = (value: string | null) =>
+    value && /^https?:\/\//i.test(value) ? (
+      <a href={value} target="_blank" rel="noopener noreferrer">
+        {value}
+      </a>
+    ) : (
+      value || missing
+    );
+  return (
+    <div className={styles.sections}>
+      <Section title="Personal Information">
+        <Field label="Full Name">{a.fullName}</Field>
+        <Field label="Email">
+          {<ContactLink value={a.email} kind="email" />}
+        </Field>
+        <Field label="Date of Birth">{birthday}</Field>
+        <Field label="Gender">{human(a.gender)}</Field>
+        <Field label="Phone">
+          {<ContactLink value={a.phone} kind="phone" />}
+        </Field>
+        <Field label="Nationality">{a.nationality}</Field>
+        <Field label="Refugee Status">{yesNo(a.refugeeStatus)}</Field>
+        <Field
+          label={a.refugeeStatus ? "Refugee Registration Number" : "ID Number"}
+        >
+          {a.identificationNumber}
+        </Field>
+      </Section>
+      <Section title="Disability Information">
+        <Field label="Has Disability">{yesNo(a.hasDisability)}</Field>
+        {a.hasDisability && (
+          <>
+            <Field label="Disability Type">{human(a.disabilityType)}</Field>
+            <Field label="Disability Details" wide>
+              {a.disabilityDetails}
+            </Field>
+          </>
+        )}
+      </Section>
+      <Section title="Contact Information">
+        <Field label="Province">{a.province}</Field>
+        <Field label="District">{a.district}</Field>
+        <Field label="Sector">{a.sector}</Field>
+        <Field label="Cell">{a.cell}</Field>
+        <Field label="Village">{a.village}</Field>
+        <Field label="Emergency Contact">{a.emergencyContactName}</Field>
+        <Field label="Relationship">{a.emergencyContactRelation}</Field>
+        <Field label="Emergency Phone">
+          {<ContactLink value={a.emergencyContactPhone} kind="phone" />}
+        </Field>
+      </Section>
+      <Section title="Family and Equipment">
+        <Field label="Has Young Child">{yesNo(a.hasYoungChild)}</Field>
+        {a.hasYoungChild && (
+          <Field label="Has Childcare Support">
+            {yesNo(a.hasChildcareSupport)}
+          </Field>
+        )}
+        <Field label="Has Laptop">{yesNo(a.hasLaptop)}</Field>
+      </Section>
+      <Section title="Education and Occupation">
+        <Field label="Current Occupation">{human(a.currentOccupation)}</Field>
+        <Field label="Highest Completed Education">
+          {human(a.educationBackground)}
+        </Field>
+        <Field label="University / Institution">{a.university}</Field>
+        <Field label="English Proficiency">{human(a.englishProficiency)}</Field>
+        <Field label="Most Confident English Skill">
+          {human(a.englishSkillConfidence)}
+        </Field>
+        <Field label="Current Work, Studies or Activities" wide>
+          {a.occupationDetails}
+        </Field>
+        <Field label="Education Attachment" wide>
+          {a.educationDocumentName ? (
+            <EducationDocumentDownload
+              applicationId={a.id}
+              name={a.educationDocumentName}
+            />
+          ) : (
+            missing
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Contact Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Province</h3>
-            <p className="text-base">{application.province}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">District</h3>
-            <p className="text-base">{application.district}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Sector</h3>
-            <p className="text-base">{application.sector}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Cell</h3>
-            <p className="text-base">{application.cell}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Village</h3>
-            <p className="text-base">{application.village}</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Emergency Contact</h3>
-              <p className="text-base">{application.emergencyContactName}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Relationship</h3>
-              <p className="text-base">{application.emergencyContactRelation}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Emergency Phone</h3>
-              <p className="text-base">{application.emergencyContactPhone}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Family and Equipment</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Has Young Child</h3>
-              <p className="text-base">{application.hasYoungChild ? "Yes" : "No"}</p>
-            </div>
-            {application.hasYoungChild && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Has Childcare Support</h3>
-                <p className="text-base">{application.hasChildcareSupport ? "Yes" : "No"}</p>
-              </div>
-            )}
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Has Laptop</h3>
-              <p className="text-base">{application.hasLaptop ? "Yes" : "No"}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Education and Occupation</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Current Occupation</h3>
-              <p className="text-base">{application.currentOccupation.replace(/_/g, " ")}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Education Background</h3>
-              <p className="text-base">{application.educationBackground.replace(/_/g, " ")}</p>
-            </div>
-            {application.university && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">University/Institution</h3>
-                <p className="text-base">{application.university}</p>
-              </div>
-            )}
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">English Proficiency</h3>
-              <p className="text-base">{application.englishProficiency}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Most Confident English Skill</h3>
-              <p className="text-base">{application.englishSkillConfidence}</p>
-            </div>
-            {/* <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Can Pay Registration Fee</h3>
-              <p className="text-base">{application.canPayRegistrationFee ? "Yes" : "No"}</p>
-            </div> */}
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Academic Background</h3>
-            <p className="text-base">{application.academicBackground}</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Course and Motivation</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Selected Course</h3>
-            <p className="text-base">{application.course.name}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">How They Heard About Us</h3>
-            <p className="text-base">{application.howDidYouKnow}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">How They Heard About Us (Details)</h3>
-            <p className="text-base">{application.howDidYouKnowSpecification || "Not provided"}</p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Motivation</h3>
-            <p className="text-base whitespace-pre-line">{application.motivation}</p>
-          </div>
-          {application.additionalFeedback && (
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground">Additional Feedback</h3>
-              <p className="text-base whitespace-pre-line">{application.additionalFeedback}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Professional Profiles</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {application.linkedInProfile && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">LinkedIn Profile</h3>
-                <a
-                  href={application.linkedInProfile}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {application.linkedInProfile}
-                </a>
-              </div>
-            )}
-            {application.githubProfile && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">GitHub Profile</h3>
-                <a
-                  href={application.githubProfile}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {application.githubProfile}
-                </a>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </>
-  )
+        </Field>
+        <Field label="Academic Background" wide>
+          {a.academicBackground}
+        </Field>
+      </Section>
+      <Section title="Program and Motivation">
+        <Field label="Selected Program">{a.course?.name}</Field>
+        <Field label="Cohort">{cohort}</Field>
+        <Field label="How They Heard About Us">{human(a.howDidYouKnow)}</Field>
+        <Field label="Referral Details">{a.howDidYouKnowSpecification}</Field>
+        <Field label="Motivation" wide>
+          {a.motivation}
+        </Field>
+        <Field label="Additional Feedback" wide>
+          {a.additionalFeedback}
+        </Field>
+      </Section>
+      <Section title="Application source"><Field label="Website">{a.entrySourceDomain}</Field><Field label="Program page">{a.entrySource && isEntrySource(a.entrySource) ? <a href={ENTRY_SOURCES[a.entrySource].url} target="_blank" rel="noopener noreferrer">{ENTRY_SOURCES[a.entrySource].label}</a> : missing}</Field><Field label="Entry link issued" wide>{a.entryIssuedAt?new Intl.DateTimeFormat("en-GB",{dateStyle:"medium",timeStyle:"short",timeZone:"Africa/Kigali"}).format(new Date(a.entryIssuedAt))+" · Kigali time":missing}</Field></Section>
+    <Section title="Professional Profiles">
+        <Field label="LinkedIn Profile">{profile(a.linkedInProfile)}</Field>
+        <Field label="GitHub Profile">{profile(a.githubProfile)}</Field>
+      </Section>
+    </div>
+  );
 }

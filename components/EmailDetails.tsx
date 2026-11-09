@@ -11,7 +11,7 @@ import EmailForm from "./EmailForm"
 import DOMPurify from "isomorphic-dompurify"
 
 interface EmailDetailsProps {
-    email: Email & { course: Course }
+    email: Email & { course: Course | null }
     courses: Course[]
 }
 
@@ -57,7 +57,7 @@ export default function EmailDetails({ email, courses }: EmailDetailsProps) {
                     </div>
                     <div>
                         <strong className="text-gray-700">Course:</strong>
-                        <p className="text-gray-900">{email.course.name}</p>
+                        <p className="text-gray-900">{email.course?.name ?? "-"}</p>
                     </div>
                     <div>
                         <strong className="text-gray-700">Body:</strong>
@@ -88,7 +88,7 @@ export default function EmailDetails({ email, courses }: EmailDetailsProps) {
                         defaultValues={{
                             subject: email.subject,
                             body: email.body,
-                            courseId: email.courseId,
+                            courseId: email.courseId ?? undefined,
                             invitationDate: email.invitationDate ? new Date(email.invitationDate).toISOString().split("T")[0] : "",
                         }}
                         onSubmit={(formData) => updateEmail(email.id, formData)}

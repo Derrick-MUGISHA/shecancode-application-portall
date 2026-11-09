@@ -1,59 +1,59 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { ArrowRight, ArrowUpRight, Sparkles } from "lucide-react";
+import styles from "./home.module.css";
+import ArcticBackdrop from "@/components/arctic-backdrop";
 
 export default function Home() {
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="shadow-sm">
-        <div className="container mx-auto py-2 px-4 flex justify-between items-center">
-          <Link href="https://www.shecancodeschool.org/"><img src="/logo.png" alt="logo" width={100} height={20} /></Link>
-          <h1 className="hidden md:block text-2xl font-bold text-gray-700">
-            Applicant Registration System
-          </h1>
-
-          <nav>
-            <ul className="flex space-x-4">
-              <li>
-                <Link href="/apply">
-                  <Button variant="default">Apply Now</Button>
-                </Link>
-              </li>
-              {/* <li>
-                <Link href="/admin/login">
-                  <Button variant="outline">Admin Panel</Button>
-                </Link>
-              </li> */}
-            </ul>
-          </nav>
-        </div>
-      </header>
-      <main className="flex-1 container mx-auto py-12 px-4">
-        <div className="max-w-3xl mx-auto text-center space-y-6">
-          <h2 className="text-4xl font-bold tracking-tight text-gray-700">
-            Welcome to Our Application Portal
-          </h2>
-          <p className="text-xl text-muted-foreground">
-            Apply for our courses and programs to advance your career and
-            skills.
-          </p>
-          <div className="flex justify-center gap-4 pt-4">
-            <Link href="/apply">
-              <Button size="lg">Start Your Application</Button>
+    <div className={styles.page}>
+      <div className={styles.aura}>
+        <ArcticBackdrop />
+        <div className={styles.content}>
+          <header className={styles.header}>
+            <Link href="https://www.shecancodeschool.org/" className={styles.logoLink} aria-label="SheCanCode school website">
+              <Image src="/logo.png" alt="SheCanCode" width={263} height={191} priority className={styles.logo} />
             </Link>
-            {/* <Link href="/admin/login">
-              <Button variant="outline" size="lg">
-                Admin Login
-              </Button>
-            </Link> */}
-          </div>
+            <a href="https://www.shecancodeschool.org/" className={styles.schoolLink}>
+              Get to know us <ArrowUpRight size={16} aria-hidden="true" />
+            </a>
+          </header>
+          <main id="main-content" className={styles.hero}>
+            {/* <div className={styles.eyebrow}>
+              <Sparkles size={15} strokeWidth={1.6} aria-hidden="true" />
+              WELCOME TO SHECANCODE
+            </div> */}
+            <h1 className={styles.title}>
+             Welcome to Our Application Portal
+              <span>starts here.</span>
+            </h1>
+            <p className={styles.description}>
+              Apply for our courses and programs to advance your career and skills.
+              {/* <span>We can’t wait to meet you.</span> */}
+            </p>
+            <div className={styles.actions}>
+              <Link href="/apply" prefetch={true} className={styles.applyLink}>
+                Start your application
+                <span className={styles.buttonIcon}>
+                  <ArrowRight size={19} aria-hidden="true" />
+                </span>
+              </Link>
+              <p className={styles.actionNote}>Your future is full of possibility.</p>
+            </div>
+            {/* <div className={styles.values} aria-label="Your journey with SheCanCode">
+              <span>Learn with purpose</span>
+              <span className={styles.valueDot} aria-hidden="true" />
+              <span>Build with confidence</span>
+              <span className={styles.valueDot} aria-hidden="true" />
+              <span>Grow together</span>
+            </div> */}
+          </main>
+          <footer className={styles.footer}>
+            <span>© {new Date().getFullYear()} SheCanCode</span>
+            <span>A little courage. A world of possibility.</span>
+          </footer>
         </div>
-      </main>
-      <footer className="border-t border-gray-200 py-6">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Applicant Registration System. All
-          rights reserved.
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }

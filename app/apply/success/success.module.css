@@ -1,0 +1,12 @@
+.page { position: relative; isolation: isolate; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 32px 20px; background: #fff; color: #163653; }
+.backdrop { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+.card { width: 100%; max-width: 560px; text-align: center; background: #fff; border: 1px solid #e0eaf2; border-radius: 28px; padding: clamp(28px,6vw,56px); box-shadow: 0 16px 60px #193f600d; }
+.logo { width: 82px; height: auto; margin: 0 auto 28px; }
+.check { width: 68px; height: 68px; padding: 15px; border-radius: 50%; background: #eaf8f0; color: #22965c; margin: 0 auto 24px; }
+.card h1 { font-size: clamp(26px,4vw,34px); font-weight: 600; line-height: 1.2; letter-spacing: -.035em; margin-bottom: 18px; }
+.card p { color: #52667a; font-size: 15px; line-height: 1.8; margin-bottom: 28px; }
+.card a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 12px 24px; border-radius: 24px; background: #193f60; color: #fff; font-size: 14px; }
+.card a:hover { background: #285777; }
+.card a:focus-visible { outline: 3px solid #355f80; outline-offset: 5px; }
+.confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+@media (prefers-reduced-motion: reduce) { .confetti { display: none; } }
