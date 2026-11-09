@@ -55,3 +55,25 @@ test('privacy mode replaces identifying avatars with a neutral icon', async () =
   assert.doesNotMatch(first, /<img|data:image/)
   assert.match(first, /aria-hidden="true"/)
 })
+
+test('participant skeletons render during entry, draft restoration, program and location loading', async () => {
+  const boneyard = await import('boneyard-js/react')
+  const components = load('components/application-skeletons.tsx', {
+    'boneyard-js/react': boneyard,
+    './application-shell': { __esModule: true, default: ({ children, sidebar }) => React.createElement('main', null, sidebar, children) },
+  })
+  const previousError = console.error
+  console.error = (...args) => { if (!String(args[0]).includes('useLayoutEffect does nothing on the server')) previousError(...args) }
+  try {
+    for (const [name, props] of [
+      ['ApplicationEntrySkeleton', {}], ['ApplicationFormSkeleton', {}], ['ApplicationFormSkeleton', { step: 1 }],
+      ['ProgramSelectionSkeleton', {}], ['ApplicationFieldSkeleton', { label: 'District' }], ['ApplicationPageSkeleton', {}],
+    ]) {
+      const html = renderToStaticMarkup(React.createElement(components[name], props))
+      assert.match(html, /role="status"/)
+      assert.match(html, /aria-busy="true"/)
+      assert.match(html, /<i style="left:/, `${name} must show placeholders before hydration`)
+      assert.doesNotMatch(html, /<input|type="submit"|mailto:|tel:/)
+    }
+  } finally { console.error = previousError }
+})

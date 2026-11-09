@@ -1,12 +1,13 @@
 "use client"
 import { useState, useEffect } from "react"
 import { acceptingApplications, programClock } from "@/lib/program-availability"
-import { Check, ArrowUpRight, BookOpen, Loader2 } from "lucide-react"
+import { Check, ArrowUpRight, BookOpen } from "lucide-react"
 import { FormField, FormItem, FormMessage } from "@/components/ui/form"
 import type { UseFormReturn } from "react-hook-form"
 import type { z } from "zod"
 import type { formSchema } from "@/lib/form-schema"
 import styles from "../application-wizard.module.css"
+import { ProgramSelectionSkeleton } from "../application-skeletons"
 export type { Program as Course } from "@/lib/program-types"
 import type { Program as Course } from "@/lib/program-types"
 type FormValues=z.infer<typeof formSchema>
@@ -15,7 +16,7 @@ export default function CourseSelection({form,courses,loading,error,onRetry}:{fo
   const [now,setNow]=useState(Date.now())
   const selectedId=form.watch("courseId"),cohortId=form.watch("cohortId")
   useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer)},[])
-  if(loading)return <div role="status" className={styles.emptyState}><Loader2 className="animate-spin" aria-hidden="true"/>Finding open programs…</div>
+  if(loading)return <ProgramSelectionSkeleton />
   if(error)return <div role="alert" className={styles.emptyState}><p>{error}</p><button type="button" onClick={onRetry} className={styles.textButton}>Try again</button></div>
   if(!courses.some(course=>course.isOpen!==false&&(course.cohorts?.length?course.cohorts.some(cohort=>acceptingApplications(cohort,programClock(course,now))):!course.requiresCohort&&acceptingApplications(course,programClock(course,now)))))return <div className={styles.emptyState}><BookOpen size={28} aria-hidden="true"/><h3>Data not available</h3><p>No open programs to display.</p><a href="https://www.shecancodeschool.org/" className={styles.textButton}>Visit SheCanCode<ArrowUpRight size={15} aria-hidden="true"/></a></div>
   return <FormField control={form.control} name="courseId" render={({field})=><FormItem>

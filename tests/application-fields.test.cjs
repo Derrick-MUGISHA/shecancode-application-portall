@@ -685,7 +685,7 @@ test("admin answer endpoint requires authentication, checks edit version, and re
 test("portal renders static cohort labels and excludes full cohorts", () => {
   const React=require("react"),{renderToStaticMarkup}=require("react-dom/server")
   const tags=Object.fromEntries(["FormItem","FormMessage"].map(name=>[name,({children})=>React.createElement("div",null,children)]))
-  const Component=load("components/form-sections/course-selection.tsx",{"../application-wizard.module.css":{default:{}},"@/components/ui/form":{...tags,FormField:({render})=>render({field:{name:"courseId",onChange:()=>{},onBlur:()=>{},ref:()=>{}}})}}).default
+  const Component=load("components/form-sections/course-selection.tsx",{"../application-skeletons":{ProgramSelectionSkeleton:()=>null},"../application-wizard.module.css":{default:{}},"@/components/ui/form":{...tags,FormField:({render})=>render({field:{name:"courseId",onChange:()=>{},onBlur:()=>{},ref:()=>{}}})}}).default
   const cohort={id:"c",number:1,cohortLabel:"cohort-1",isOpen:true,capacity:2,applicationCount:1,closesAt:"2099-01-01T00:00:00Z"}
   const course={id:"p",name:"Example program",description:null,isOpen:true,cohorts:[cohort,{...cohort,id:"full",cohortLabel:"cohort-2",applicationCount:2}]}
   const form={control:{},watch:name=>name==="courseId"?"p":"c",formState:{errors:{}},setValue:()=>{},clearErrors:()=>{}}
@@ -925,6 +925,7 @@ test("automatic entry posts once even when React replays the mount effect",()=>{
   const effects=[]
   const {default:AutomaticEntry}=load("components/automatic-application-entry.tsx",{
     react:{useRef:()=>({current:refs++===0?{requestSubmit:()=>posts++}:false}),useEffect:callback=>effects.push(callback)},
+    "./application-skeletons":{ApplicationEntrySkeleton:()=>null},
   })
   const page=AutomaticEntry({action:"/api/application-entry/redeem",token:"test-token"})
   const form=page.props.children[1]

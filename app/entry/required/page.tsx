@@ -1,7 +1,35 @@
 import Link from "next/link"
-import {isLocalDevelopmentPortal} from "@/lib/entry-token"
-import {ENTRY_SOURCES} from "@/lib/entry-sources"
-export default async function EntryRequired({searchParams}:{searchParams:Promise<{error?:string}>}){
-  const {error}=await searchParams
-  return <><h1 className="text-3xl font-semibold text-[#193f60]">Start with a program</h1><p className="leading-relaxed text-slate-600">{error?"This entry link has expired, has already been used, or is invalid. Please return to a program website for a new link.":"To apply, visit one of our websites and choose its Apply button. We’ll bring you back here with a secure entry link."}</p><ul className="space-y-3">{Object.entries(ENTRY_SOURCES).filter(([id])=>id!=="development").map(([id,source])=><li key={id}><a href={source.url} className="block rounded-lg border border-slate-200 p-4 text-sm font-medium text-[#193f60] hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700">{source.label} ↗</a></li>)}</ul>{isLocalDevelopmentPortal()&&<Link href="/entry/development" className="inline-block text-sm font-medium text-blue-800 underline">Open local application</Link>}</>
+import { ArrowRight, Code2 } from "lucide-react"
+import { isLocalDevelopmentPortal } from "@/lib/entry-token"
+import EntryWebsiteLinks from "@/components/entry-website-links"
+import styles from "../entry.module.css"
+
+const steps = [
+  { title: "Find your program", detail: "Explore either website and choose your course." },
+  { title: "Select Apply", detail: "Use the Apply button on your program’s page." },
+  { title: "Complete your form", detail: "You’ll return here to fill in your application." },
+]
+
+export default async function EntryRequired({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams
+  return <>
+    <div className={styles.heading}>
+      {/* <p className={styles.eyebrow}><span aria-hidden="true" />Your next chapter</p> */}
+      <h1>{error ? <>Open a new<br /><span>application link.</span></> : <>Your application<br /><span>starts here.</span></>}</h1>
+      <p className={styles.description}>
+        {error ? <>This link is no longer available. Visit <strong>SheCanCode</strong> or <strong>Igire Rwanda</strong> and select <strong>Apply</strong> on your program’s page to continue.</>
+          : <>Find your program on <strong>SheCanCode</strong> or <strong>Igire Rwanda</strong>.<br className={styles.desktopBreak} /> Select <strong>Apply</strong> on its website, and your form opens here automatically.</>}
+      </p>
+    </div>
+    <EntryWebsiteLinks />
+    <ol className={styles.steps} aria-label="How to start your application">
+      {steps.map((step, index) => <li key={step.title}>
+        <span className={styles.stepNumber} aria-hidden="true">0{index + 1}</span>
+        <div><h2>{step.title}</h2><p>{step.detail}</p></div>
+      </li>)}
+    </ol>
+    {isLocalDevelopmentPortal() && <div className={styles.localEntry}><Link href="/entry/development" className={styles.localLink}>
+      <Code2 size={14} aria-hidden="true" />Open local application<ArrowRight size={13} aria-hidden="true" />
+    </Link></div>}
+  </>
 }
