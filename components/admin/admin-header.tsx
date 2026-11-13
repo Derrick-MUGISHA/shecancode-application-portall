@@ -1,11 +1,13 @@
 "use client"
 
 import { useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Users, BookOpen, Mail, ArrowUpRight, LogOut, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { adminApplicationsOptions } from "@/hooks/use-admin-applications"
+import { adminProgramsOptions } from "@/hooks/use-admin-programs"
 import { adminSectionActive } from "@/lib/admin-navigation"
 import { auth } from "@/lib/firebase"
 import styles from "./admin.module.css"
@@ -22,6 +24,28 @@ export default function AdminHeader() {
   const router = useRouter()
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState("")
+
+  const preparePage = (href: string) => {
+    router.prefetch(href)
+    if (!auth.currentUser) return
+    if (href === "/admin/applications") void queryClient.prefetchQuery(adminApplicationsOptions(queryClient))
+    if (href === "/admin/courses") void queryClient.prefetchQuery(adminProgramsOptions())
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    void auth.authStateReady().then(() => {
+      if (cancelled || !auth.currentUser) return
+      for (const { href } of navLinks) {
+        router.prefetch(href)
+        if (!adminSectionActive(pathname, href)) {
+          if (href === "/admin/applications") void queryClient.prefetchQuery(adminApplicationsOptions(queryClient))
+          if (href === "/admin/courses") void queryClient.prefetchQuery(adminProgramsOptions())
+        }
+      }
+    })
+    return () => { cancelled = true }
+  }, [pathname, queryClient, router])
 
   const handleLogout = async () => {
     if (loggingOut) return
@@ -50,7 +74,7 @@ export default function AdminHeader() {
           <ul className={styles.navLinks}>
             {navLinks.map(({ href, label, icon: Icon }) => {
               const active = adminSectionActive(pathname, href)
-              return <li key={href}><Link href={href} prefetch={false} aria-current={active ? "page" : undefined} className={`${styles.navLink} ${active ? styles.navActive : ""}`}><Icon size={16} aria-hidden="true"/>{label}</Link></li>
+              return <li key={href}><Link href={href} prefetch={true} onMouseEnter={() => preparePage(href)} onFocus={() => preparePage(href)} aria-current={active ? "page" : undefined} className={`${styles.navLink} ${active ? styles.navActive : ""}`}><Icon size={16} aria-hidden="true"/>{label}</Link></li>
             })}
           </ul>
         </nav>

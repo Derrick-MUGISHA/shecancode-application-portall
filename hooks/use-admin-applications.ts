@@ -1,6 +1,6 @@
 "use client"
 
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { auth } from "@/lib/firebase"
 import type { Application, ApplicationsResult } from "@/lib/admin-application-list-types"
 
@@ -21,12 +21,11 @@ export async function loadApplicationsSnapshot(previous?: ApplicationsSnapshot, 
   return { applications: data.applications, version: response.headers.get("ETag") }
 }
 
-export function useAdminApplications(initial?: ApplicationsResult) {
-  const client = useQueryClient()
+export function adminApplicationsOptions(client: QueryClient, initial?: ApplicationsResult) {
   const queryKey = [...ADMIN_APPLICATIONS_KEY, auth.currentUser?.uid ?? "session"]
-  return useQuery({
+  return {
     queryKey,
-    queryFn: ({ signal }) => loadApplicationsSnapshot(client.getQueryData<ApplicationsSnapshot>(queryKey), signal),
+    queryFn: ({ signal }: { signal: AbortSignal }) => loadApplicationsSnapshot(client.getQueryData<ApplicationsSnapshot>(queryKey), signal),
     initialData: initial?.success ? { applications: initial.applications, version: null } : undefined,
     enabled: Boolean(auth.currentUser),
     staleTime: Infinity,
@@ -35,5 +34,9 @@ export function useAdminApplications(initial?: ApplicationsResult) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     retry: false,
-  })
+  }
+}
+
+export function useAdminApplications(initial?: ApplicationsResult) {
+  return useQuery(adminApplicationsOptions(useQueryClient(), initial))
 }

@@ -16,14 +16,16 @@ export const metadata: Metadata = {
 }
 
 export default async function ApplyPage({ searchParams }: { searchParams: Promise<{ step?: string }> }) {
-  const entry=await entrySessionFromCookie((await cookies()).get(ENTRY_COOKIE)?.value)
+  const [entry, initialPrograms] = await Promise.all([
+    entrySessionFromCookie((await cookies()).get(ENTRY_COOKIE)?.value),
+    getPreloadedPrograms().catch(() => undefined),
+  ])
   if(!entry){
     const local = isLocalDevelopmentPortal() && (await headers()).get("host") === new URL(portalOrigin()).host
     redirect(local ? "/entry/development" : "/entry/required")
   }
   const query = await searchParams
   const initialStep = query.step === undefined ? undefined : applicationStepFromQuery(query.step)
-  const initialPrograms = await getPreloadedPrograms().catch(() => undefined)
   return <ApplicationShell>
     <p className="mb-5 text-center text-sm text-slate-600">You arrived from <strong>{entry.sourceDomain}</strong></p>
     <ApplicationForm initialPrograms={initialPrograms} initialStep={initialStep} />

@@ -2223,3 +2223,29 @@ button.activityCell:focus-visible {
         padding: 18px;
     }
 }
+
+/* The entire program card is the drag surface; controls keep their normal behavior. */
+.draggableProgram { cursor: grab; }
+.draggableProgram:active { cursor: grabbing; }
+.draggingRecord { opacity: .65; outline: 1px dashed #7394ad; outline-offset: 3px; }
+.dropTarget { outline: 2px solid #285e88; outline-offset: 3px; box-shadow: 0 0 0 5px #285e8812; }
+.program { transition: opacity 160ms ease, box-shadow 160ms ease; }
+.programDragPreview {
+    position: fixed;
+    top: -1000px;
+    left: 0;
+    width: 300px;
+    padding: 18px 22px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    border: 1px solid #bacddd;
+    border-radius: 12px;
+    background: #fff;
+    color: #193f60;
+    box-shadow: 0 8px 24px #183b5626;
+    font-size: 15px;
+    font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) { .program { transition: none; } }

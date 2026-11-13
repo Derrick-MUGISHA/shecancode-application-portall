@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
-import { revalidateTag } from "next/cache"
-import { PROGRAM_CACHE_TAG } from "@/lib/program-data"
+import { invalidatePrograms } from "@/lib/program-data"
 import { courseDetailsSchema } from "@/lib/cohorts"
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -46,7 +45,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!result.success) return NextResponse.json({message:result.error.issues[0].message,errors:result.error.flatten().fieldErrors},{status:400})
     const updatedCourse = await prisma.course.update({where:{id},data:result.data})
 
-    revalidateTag(PROGRAM_CACHE_TAG, { expire: 0 })
+    invalidatePrograms()
     return NextResponse.json(updatedCourse)
   } catch (error) {
     console.error("Error updating course:", error)
@@ -89,7 +88,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
       },
     })
 
-    revalidateTag(PROGRAM_CACHE_TAG, { expire: 0 })
+    invalidatePrograms()
     return NextResponse.json({ message: "Course deleted successfully" }, { status: 200 })
   } catch (error) {
     console.error("Error deleting course:", error)

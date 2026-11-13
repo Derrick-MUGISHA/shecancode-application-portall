@@ -1,10 +1,11 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { adminProgramsOptions } from "@/hooks/use-admin-programs";
 import { ADMIN_APPLICATIONS_KEY } from "@/hooks/use-admin-applications";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useRef } from "react";
 import {
   Plus,
   Pencil,
@@ -47,6 +48,8 @@ import {
   cohortSettingsFor,
   courseDetailsSchema,
 } from "@/lib/cohorts";
+import { auth } from "@/lib/firebase";
+import { compareProgramOrder, moveProgram } from "@/lib/program-order";
 import type { Program, CohortOption } from "@/lib/program-types";
 import { paginateAdminRows, kigaliDay } from "@/lib/admin-applications";
 import { toast } from "@/components/ui/use-toast";
@@ -69,17 +72,20 @@ export default function CourseList({
   initialPrograms,
 }: { initialPrograms?: AdminProgram[] } = {}) {
   const queryClient = useQueryClient();
-  const [programs, setPrograms] = useState<AdminProgram[]>(
-    initialPrograms || [],
-  );
+  const prefetchedPrograms = queryClient.getQueryData<AdminProgram[]>(adminProgramsOptions().queryKey);
+  const [programs, setProgramState] = useState<AdminProgram[]>(prefetchedPrograms || initialPrograms || []);
+  const setPrograms = (data: AdminProgram[]) => {
+    setProgramState(data);
+    queryClient.setQueryData(adminProgramsOptions().queryKey, data);
+  };
   const [hoveredMetric, setHoveredMetric] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!initialPrograms);
+  const [loading, setLoading] = useState(!initialPrograms && !prefetchedPrograms);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [focusOpen, setFocusOpen] = useState(false);
   const [availability, setAvailability] = useState("ALL");
-  const [sort, setSort] = useState("name");
+  const [sort, setSort] = useState("display");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [cohortPages, setCohortPages] = useState<Record<string, { page: number; size: number }>>({});
@@ -110,6 +116,40 @@ export default function CourseList({
     program: AdminProgram;
     cohort?: CohortOption;
   } | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const orderElements = useRef(new Map<string, HTMLElement>());
+  const previousPositions = useRef(new Map<string, { top: number; left: number }>());
+  useLayoutEffect(() => {
+    const positions = new Map<string, { top: number; left: number }>();
+    for (const [id, element] of orderElements.current) {
+      const rect = element.getBoundingClientRect();
+      positions.set(id, { top: rect.top + window.scrollY, left: rect.left + window.scrollX });
+      const previous = previousPositions.current.get(id);
+      if (!previous || window.matchMedia("(prefers-reduced-motion: reduce)").matches) continue;
+      const x = previous.left - (rect.left + window.scrollX), y = previous.top - (rect.top + window.scrollY);
+      if (Math.abs(x) < 1 && Math.abs(y) < 1) continue;
+      element.getAnimations().forEach(animation => animation.cancel());
+      element.animate([{ transform: `translate(${x}px, ${y}px)` }, { transform: "translate(0, 0)" }], {
+        duration: 260, easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+      });
+    }
+    previousPositions.current = positions;
+  }, [programs, sort, page, pageSize, expanded, cohortPages]);
+  const registerOrderElement = (id: string, element: HTMLElement | null) => {
+    if (element) orderElements.current.set(id, element); else orderElements.current.delete(id);
+  };
+  const [dragged, setDragged] = useState<string | null>(null);
+  const dragOrigin = useRef<EventTarget | null>(null);
+  const dragPreview = useRef<HTMLDivElement | null>(null);
+  const finishDrag = () => {
+    dragPreview.current?.remove();
+    dragPreview.current = null;
+    dragOrigin.current = null;
+    setDragged(null);
+    setDropTarget(null);
+  };
+  useEffect(() => () => { dragPreview.current?.remove() }, []);
+  const [orderMessage, setOrderMessage] = useState("");
   const lastLoad = useRef(Date.now());
   const inFlight = useRef(false);
   const load = useCallback(async (quiet = false) => {
@@ -118,10 +158,9 @@ export default function CourseList({
     setRefreshing(true);
     if (!quiet) setLoading(true);
     try {
-      const response = await fetch("/api/courses", { cache: "no-store" });
-      if (!response.ok) throw Error("Unable to load programs.");
-      const data = await response.json();
-      setPrograms(data);
+      const data = await queryClient.fetchQuery({ ...adminProgramsOptions(), staleTime: 0 });
+      setProgramState(data);
+
       setLoadError("");
     } catch (error) {
       setLoadError(
@@ -133,35 +172,40 @@ export default function CourseList({
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [queryClient]);
   useEffect(() => {
-    if (initialPrograms) {
-      setPrograms(initialPrograms);
+    const cached = queryClient.getQueryData<AdminProgram[]>(adminProgramsOptions().queryKey);
+    if (cached || initialPrograms) {
+      setProgramState(cached || initialPrograms || []);
+      if (!cached && initialPrograms) queryClient.setQueryData(adminProgramsOptions().queryKey, initialPrograms);
       setLoading(false);
       setLoadError("");
       lastLoad.current = Date.now();
     } else void load();
-  }, [initialPrograms, load]);
+  }, [initialPrograms, load, queryClient]);
   useEffect(() => {
-    // Refresh stale data when returning to the page, without polling while idle.
+    // Keep visible lists current; leave active edits and drag operations undisturbed.
     const refresh = () => {
       if (
         document.visibilityState === "visible" &&
         !saving &&
+        !dragged &&
         !programDialog &&
         !cohortProgram &&
         !deleting &&
-        Date.now() - lastLoad.current >= 30000
+        Date.now() - lastLoad.current >= 2000
       )
         void load(true);
     };
+    const interval = setInterval(refresh, 2000);
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
     return () => {
+      clearInterval(interval);
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refresh);
     };
-  }, [saving, programDialog, cohortProgram, deleting, load]);
+  }, [saving, dragged, programDialog, cohortProgram, deleting, load]);
   const filtered = useMemo(
     () =>
       programs
@@ -177,7 +221,7 @@ export default function CourseList({
                 : !availableProgram(program))),
         )
         .sort((a, b) =>
-          sort === "newest"
+          sort === "display" ? compareProgramOrder(a, b) : sort === "newest"
             ? new Date(b.createdAt || 0).getTime() -
               new Date(a.createdAt || 0).getTime()
             : sort === "cohorts"
@@ -300,7 +344,8 @@ export default function CourseList({
       setProgramDialog(false);
       if (cohortProgram) setExpanded((current) => new Set(current).add(cohortProgram.id));
       setCohortProgram(null);
-      await queryClient.invalidateQueries({ queryKey: ADMIN_APPLICATIONS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_APPLICATIONS_KEY });
+      setPage(1);
       await load(true);
     } catch {
       setSaveError("Unable to save. Check your connection and try again.");
@@ -322,13 +367,62 @@ export default function CourseList({
         return;
       }
       setDeleting(null);
-      await queryClient.invalidateQueries({ queryKey: ADMIN_APPLICATIONS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ADMIN_APPLICATIONS_KEY });
+      setPage(1);
       await load(true);
     } catch {
       setSaveError("Unable to delete. Please try again.");
     } finally {
       setSaving(false);
     }
+  };
+  const reorder = async (source: string, target: string) => {
+    if (saving || refreshing || source === target) return;
+    const previous = programs;
+    const items = [...programs].sort(compareProgramOrder);
+    const moved = moveProgram(items, source, target);
+    if (moved === items) return;
+    const base = -Date.now();
+    const ordered = moved.map((item, index) => ({ ...item, displayOrder: base + index / moved.length }));
+    setSaving(true);
+    setOrderMessage("Saving display order…");
+    setProgramState(ordered);
+    finishDrag();
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const response = await fetch("/api/courses/order", {
+        method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` },
+        body: JSON.stringify({ ids: ordered.map(item => item.id) }),
+      });
+      if (!response.ok) throw Error((await response.json()).message || "Unable to save display order.");
+      setPrograms(ordered);
+      setOrderMessage("Display order saved. Applicants will see this order too.");
+    } catch (error) {
+      setPrograms(previous);
+      setOrderMessage(error instanceof Error ? error.message : "Unable to save display order.");
+      toast({ title: "Order was not saved", description: "The previous order has been restored. Refresh and try again.", variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+  const startProgramDrag = (event: React.DragEvent<HTMLElement>, program: AdminProgram) => {
+    const origin = dragOrigin.current;
+    if (saving || refreshing || sort !== "display" ||
+      (origin instanceof Element && origin.closest('button, a, input, select, textarea, [role="button"], [contenteditable="true"]'))) {
+      event.preventDefault();
+      return;
+    }
+    dragPreview.current?.remove();
+    // Keep the browser's drag image compact even when the program has a large
+    // expanded cohort table. Never clone the whole card into the drag image.
+    const preview = document.createElement("div");
+    preview.className = styles.programDragPreview;
+    preview.textContent = program.name;
+    preview.setAttribute("aria-hidden", "true");
+    document.body.appendChild(preview);
+    dragPreview.current = preview;
+    event.dataTransfer.setData("text/plain", program.id);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setDragImage(preview, 24, 24);
+    setDragged(program.id);
   };
   const totalCohorts = programs.reduce(
     (sum, program) => sum + (program.cohorts?.length || 0),
@@ -527,6 +621,7 @@ export default function CourseList({
             setPage(1);
           }}
           options={[
+            { value: "display", label: "Display order (drag to arrange)" },
             { value: "name", label: "Program A–Z" },
             { value: "newest", label: "Newest first" },
             { value: "cohorts", label: "Most cohorts" },
@@ -555,6 +650,7 @@ export default function CourseList({
           {filtered.length > 0 && filtered.every((program) => expanded.has(program.id)) ? "Collapse all" : "Expand all"}
         </Button>
       </section>
+      <p id="program-order-help" role="status" className="text-sm text-slate-600">{orderMessage || "New programs appear first. Drag a program card to save a different display order."}</p>
       {loadError && (
         <p role="alert">
           {loadError}{" "}
@@ -599,7 +695,27 @@ export default function CourseList({
             const settings = cohortPages[program.id] ?? { page: 1, size: 10 };
             const cohortPagination = paginateAdminRows(cohorts, settings.page, settings.size);
             return (
-            <article key={program.id} className={styles.program}>
+            <article key={program.id} ref={element => registerOrderElement(program.id, element)}
+              draggable={!saving && !refreshing && sort === "display"}
+              aria-label={program.name}
+              aria-describedby="program-order-help"
+              className={`${styles.program} ${sort === "display" && !saving ? styles.draggableProgram : ""} ${dragged === program.id ? styles.draggingRecord : ""} ${dropTarget === program.id ? styles.dropTarget : ""}`}
+              onPointerDownCapture={event => { dragOrigin.current = event.target; }}
+              onDragStart={event => startProgramDrag(event, program)}
+              onDragEnd={finishDrag}
+              onDragOver={event => {
+                if (dragged && dragged !== program.id && sort === "display") {
+                  event.preventDefault(); event.dataTransfer.dropEffect = "move"; setDropTarget(program.id);
+                }
+              }}
+              onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(current => current === program.id ? null : current); }}
+              onDrop={event => {
+                if (!dragged || sort !== "display") return;
+                event.preventDefault();
+                const source = dragged;
+                finishDrag();
+                void reorder(source, program.id);
+              }}>
               <div className={styles.programTop}>
                 <div>
                   <h2>{program.name}</h2>

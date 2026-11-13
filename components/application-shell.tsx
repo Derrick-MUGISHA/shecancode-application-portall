@@ -22,7 +22,7 @@ export default function ApplicationShell({ children, sidebar }: { children: Reac
           <div className={styles.intro}>
             <p className={styles.eyebrow}>YOUR NEXT CHAPTER</p>
             <h1 id="application-title">Application Form</h1>
-            <p>Your next chapter, in four simple steps.</p>
+            <p>Choose an available program to begin your application.</p>
           </div>
         </div>
         <div className={styles.applicationLayout}>
