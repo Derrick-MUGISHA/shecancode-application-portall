@@ -116,3 +116,36 @@ test('failed refresh keeps cached applications available', async () => {
     client.clear()
   }
 })
+
+test('prefetch fills the exact applications cache used by the destination page without a second request', async () => {
+  const client = new QueryClient()
+  const auth = { currentUser: { uid: 'prefetch-admin', getIdToken: async () => 'test-token' }, authStateReady: async () => {} }
+  const api = load('hooks/use-admin-applications.ts', {
+    '@/lib/firebase': { auth }, '@tanstack/react-query': { useQueryClient: () => client, useQuery: options => options },
+  })
+  const previousFetch = global.fetch
+  let requests = 0
+  global.fetch = async () => { requests++; return new Response(JSON.stringify({ applications: [{ id: 'ready-before-navigation' }] })) }
+  try {
+    await client.prefetchQuery(api.adminApplicationsOptions(client))
+    const data = await client.fetchQuery(api.useAdminApplications())
+    assert.equal(data.applications[0].id, 'ready-before-navigation')
+    assert.equal(requests, 1)
+  } finally { global.fetch = previousFetch; client.clear() }
+})
+
+test('program prefetch is reused on arrival, and refresh replaces it without clearing cached content', async () => {
+  const client = new QueryClient()
+  const auth = { currentUser: { uid: 'prefetch-admin' } }
+  const { adminProgramsOptions } = load('hooks/use-admin-programs.ts', { '@/lib/firebase': { auth } })
+  const previousFetch = global.fetch
+  let requests = 0
+  global.fetch = async () => { requests++; return new Response(JSON.stringify([{ id: `program-${requests}` }])) }
+  try {
+    await client.prefetchQuery(adminProgramsOptions())
+    assert.equal((await client.fetchQuery(adminProgramsOptions()))[0].id, 'program-1')
+    assert.equal(requests, 1)
+    await client.fetchQuery({ ...adminProgramsOptions(), staleTime: 0 })
+    assert.equal(client.getQueryData(adminProgramsOptions().queryKey)[0].id, 'program-2')
+  } finally { global.fetch = previousFetch; client.clear() }
+})

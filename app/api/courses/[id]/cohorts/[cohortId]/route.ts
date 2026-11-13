@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
-import { revalidateTag } from "next/cache"
 import prisma from "@/lib/prisma"
-import { PROGRAM_CACHE_TAG } from "@/lib/program-data"
+import { invalidatePrograms } from "@/lib/program-data"
 import { saveProgramCohort, cohortErrorResponse, CohortSettingsError } from "@/lib/cohort-admin"
 
 type Context={params:Promise<{id:string;cohortId:string}>}
@@ -9,7 +8,7 @@ export async function PATCH(request:Request,{params}:Context) {
   try {
     const {id,cohortId}=await params
     const cohort=await saveProgramCohort(prisma,id,await request.json(),cohortId)
-    revalidateTag(PROGRAM_CACHE_TAG,{expire:0})
+    invalidatePrograms()
     return NextResponse.json(cohort)
   } catch(error) {return cohortErrorResponse(error)}
 }
@@ -22,7 +21,7 @@ export async function DELETE(_request:Request,{params}:Context) {
       if(cohort._count.applications) throw new CohortSettingsError("A cohort with applications cannot be deleted. Close it instead.")
       await tx.cohort.delete({where:{id:cohort.id}})
     })
-    revalidateTag(PROGRAM_CACHE_TAG,{expire:0})
+    invalidatePrograms()
     return NextResponse.json({success:true})
   } catch(error){return cohortErrorResponse(error)}
 }

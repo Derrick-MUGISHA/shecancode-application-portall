@@ -20,12 +20,8 @@ function Bones({ name, height, bones }: { name: string; height: number; bones: R
 
 export function ApplicationEntrySkeleton() {
   return <div className={`${styles.loading} ${styles.entry}`} role="status" aria-busy="true">
-    <span className="sr-only">Opening your application…</span>
-    <Bones name="applicant-entry-heading" height={70} bones={[[31,0,38,23,4],[14,42,72,12,3]]} />
-    <div className={styles.programs}>{[0,1].map(index => <div className={styles.entryChoice} key={index}>
-      <Bones name="applicant-entry-choice" height={84} bones={[[0,0,34,12,3],[0,28,88,17,4],[0,62,60,11,3]]} />
-    </div>)}</div>
-    <Bones name="applicant-entry-footer" height={56} bones={[[36,18,28,36,8]]} />
+    <h1 className="text-2xl font-semibold text-slate-800">Opening your application…</h1>
+    <p className="mt-3 text-sm text-slate-600">Checking your entry link and available programs. Please wait.</p>
   </div>
 }
 
@@ -69,8 +65,7 @@ export function ApplicationFormSkeleton({ step = 0 }: { step?: number }) {
 }
 
 export function ApplicationPageSkeleton() {
-  return <ApplicationShell sidebar={<ApplicationProgressSkeleton />}>
-    <Bones name="applicant-source" height={40} bones={[[27,0,46,12,3]]} />
-    <ApplicationFormSkeleton />
-  </ApplicationShell>
+  return <ApplicationShell><div role="status" aria-busy="true" className={wizard.emptyState}>
+    <h2>Checking available programs…</h2><p>Please wait while we prepare your application.</p>
+  </div></ApplicationShell>
 }

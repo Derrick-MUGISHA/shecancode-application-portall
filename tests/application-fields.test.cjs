@@ -180,8 +180,8 @@ test("closed programs reject applications before saving", async () => {
   assert.ok((await response.json()).errors.courseId)
 })
 test("open-program listing excludes closed courses and preserves legacy courses", async () => {
-  const courses=[{id:"open",isOpen:true,_count:{applications:0}},{id:"closed",isOpen:false,_count:{applications:0}},{id:"legacy",_count:{applications:0}}]
-  const {GET}=load("app/api/courses/route.ts",{"@/lib/prisma":{default:{course:{findMany:async()=>courses}},__esModule:true}})
+  const courses=[{id:"open",isOpen:true},{id:"closed",isOpen:false},{id:"legacy"}].map(course=>({...course,createdAt:new Date(),cohorts:[]}))
+  const {GET}=load("app/api/courses/route.ts",{"@/lib/prisma":{default:{course:{findMany:async()=>courses},application:{aggregateRaw:async()=>[]}},__esModule:true}})
   const open=await (await GET(new Request("http://localhost/api/courses?open=true"))).json()
   assert.deepEqual(open.map(course=>course.id),["open","legacy"])
   const all=await (await GET(new Request("http://localhost/api/courses"))).json()
@@ -289,7 +289,7 @@ test("program cache is usable immediately, expires predictably and keeps the ser
 })
 test("preloading reuses one cached database result across requests", async () => {
   let reads=0
-  const prisma={course:{findMany:async()=>{reads++;return [{id:"p",name:"Frontend",description:null,isOpen:true,closesAt:null,capacity:10,_count:{applications:2}}]}}}
+  const prisma={course:{findMany:async()=>{reads++;return [{id:"p",name:"Frontend",createdAt:new Date(),cohorts:[],description:null,isOpen:true,closesAt:null,capacity:10}]}},application:{aggregateRaw:async()=>[{courseId:"p",cohortId:null,_count:{_all:2}}]}}
   const fakeCache={unstable_cache:fn=>{let cached;return async()=>cached ||= await fn()}}
   const {getPreloadedPrograms}=load("lib/program-data.ts",{"@/lib/prisma":{default:prisma,__esModule:true},"next/cache":fakeCache})
   const first=await getPreloadedPrograms()
@@ -623,9 +623,9 @@ test("masking applicant details removes actual values from rendered screen conte
   assert.equal(html.includes("Preview attachment"),false)
 })
 
-test("live program API reads fresh database values and disables browser/CDN caching", async () => {
+test("live program API uses shared program snapshots and disables browser/CDN caching", async () => {
   let count=1
-  const prisma={course:{findMany:async()=>[{id:"p",name:"Program",description:null,isOpen:true,_count:{applications:count},cohorts:[]}]}}
+  const prisma={course:{findMany:async()=>[{id:"p",name:"Program",createdAt:new Date(),description:null,isOpen:true,cohorts:[]}]},application:{aggregateRaw:async()=>[{courseId:"p",cohortId:null,_count:{_all:count}}]}}
   const {GET,dynamic}=load("app/api/courses/route.ts",{"@/lib/prisma":{__esModule:true,default:prisma}})
   assert.equal(dynamic,"force-dynamic")
   const first=await GET(new Request("http://localhost/api/courses?open=true"))
@@ -633,7 +633,7 @@ test("live program API reads fresh database values and disables browser/CDN cach
   assert.equal(first.headers.get("CDN-Cache-Control"),"no-store")
   assert.equal((await first.json())[0].applicationCount,1)
   count=2
-  assert.equal((await (await GET(new Request("http://localhost/api/courses?open=true"))).json())[0].applicationCount,2)
+  assert.equal((await (await GET(new Request("http://localhost/api/courses?open=true"))).json())[0].applicationCount,1)
 })
 
 test("application focus includes only applications in open, non-full cohorts", () => {

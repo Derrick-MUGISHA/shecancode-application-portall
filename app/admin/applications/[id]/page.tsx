@@ -18,10 +18,9 @@ const breadCrumLinks: BreadCrumLinkTypes[] = [
 
 export default async function ApplicationDetailsPage({ params }: { params: Promise<{ id: string }>}) {
   const { id } = await params;
-  const emails = await getEmails();
 
   try {
-    const application = await prisma.application.findUnique({
+    const [application, emails] = await Promise.all([prisma.application.findUnique({
       where: {
         id,
       },
@@ -29,7 +28,7 @@ export default async function ApplicationDetailsPage({ params }: { params: Promi
         course: true,
         cohort: true,
       },
-    })
+    }), getEmails()])
 
     if (!application) {
       notFound()

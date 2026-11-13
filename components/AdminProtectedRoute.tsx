@@ -2,13 +2,20 @@
 'use client'
 
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { AdminAuthSkeleton } from "./admin/admin-skeletons";
 
-export default function AdminProtectedRoute({
+const VerifiedAdminContext = createContext(false)
+
+export default function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
+  const verified = useContext(VerifiedAdminContext)
+  return verified ? <>{children}</> : <AdminSessionCheck>{children}</AdminSessionCheck>
+}
+
+function AdminSessionCheck({
   children,
 }: {
   children: React.ReactNode;
@@ -60,5 +67,5 @@ export default function AdminProtectedRoute({
     return <AdminAuthSkeleton />;
   }
 
-  return <>{children}</>;
+  return <VerifiedAdminContext.Provider value={true}>{children}</VerifiedAdminContext.Provider>;
 }

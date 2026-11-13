@@ -36,7 +36,7 @@ export default function EmailsTable({ emails, courses }: EmailsTableProps) {
       accessorKey: "subject", header: "Subject", enableHiding: false,
       cell: ({ row }) => <div className={styles.emailSubject}>
         <span className={styles.emailIcon}><Mail size={17} aria-hidden="true" /></span>
-        <Link href={`/admin/emails/${row.original.id}`}>{row.original.subject}</Link>
+        <Link prefetch={true} href={`/admin/emails/${row.original.id}`}>{row.original.subject}</Link>
       </div>,
     },
     {
@@ -49,7 +49,7 @@ export default function EmailsTable({ emails, courses }: EmailsTableProps) {
     {
       id: "actions", header: "Action", enableHiding: false, enableSorting: false,
       cell: ({ row }) => <Button variant="outline" size="sm" asChild>
-        <Link href={`/admin/emails/${row.original.id}`} aria-label={`View email: ${row.original.subject}`}>View<ArrowUpRight size={14} className="ml-1" aria-hidden="true" /></Link>
+        <Link prefetch={true} href={`/admin/emails/${row.original.id}`} aria-label={`View email: ${row.original.subject}`}>View<ArrowUpRight size={14} className="ml-1" aria-hidden="true" /></Link>
       </Button>,
     },
   ], [])
@@ -129,7 +129,7 @@ export default function EmailsTable({ emails, courses }: EmailsTableProps) {
             <div className={styles.empty}><Inbox size={28} aria-hidden="true" /><strong>{emails.length ? "No matching emails" : "No emails yet"}</strong>
               <p>{emails.length ? "Try another subject or program." : "Add your first email to use during application reviews."}</p>
               {emails.length > 0 ? <Button variant="outline" size="sm" onClick={() => table.resetColumnFilters()}>Clear filters</Button>
-                : <Button size="sm" asChild><Link href="/admin/emails/new">Add email</Link></Button>}
+                : <Button size="sm" asChild><Link prefetch={true} href="/admin/emails/new">Add email</Link></Button>}
             </div>
           </TableCell></TableRow>}</TableBody>
         </Table>

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
-import { revalidateTag } from "next/cache"
-import { readProgramsFresh, PROGRAM_CACHE_TAG } from "@/lib/program-data"
+import { getAllPreloadedPrograms, invalidatePrograms } from "@/lib/program-data"
 import { availableProgram } from "@/lib/cohorts"
 import { courseDetailsSchema } from "@/lib/cohorts"
 
@@ -10,8 +9,7 @@ export const dynamic = "force-dynamic"
 export async function GET(request: Request) {
   try {
     const openOnly = new URL(request.url).searchParams.get("open") === "true"
-    const serverTime = new Date().toISOString()
-    const programs = (await readProgramsFresh()).map(program=>({...program,serverTime}))
+    const programs = await getAllPreloadedPrograms()
     return NextResponse.json(openOnly?programs.filter(program=>availableProgram(program)):programs,{headers:{
       "Cache-Control":"no-store, max-age=0, must-revalidate",
       "CDN-Cache-Control":"no-store",
@@ -34,7 +32,7 @@ export async function POST(request: Request) {
       data: {...settings, requiresCohort:true},
     })
 
-    revalidateTag(PROGRAM_CACHE_TAG, { expire: 0 })
+    invalidatePrograms()
     return NextResponse.json(course, { status: 201 })
   } catch (error) {
     console.error("Error creating course:", error)
