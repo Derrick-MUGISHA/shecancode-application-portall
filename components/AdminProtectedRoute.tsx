@@ -6,7 +6,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { AdminAuthSkeleton } from "./admin/admin-skeletons";
+import AdminAuthenticating from "./admin/admin-authenticating";
 
 const VerifiedAdminContext = createContext(false)
 
@@ -64,7 +64,7 @@ function AdminSessionCheck({
   }, [router, queryClient]);
 
   if (isLoading || !isAuthenticated) {
-    return <AdminAuthSkeleton />;
+    return <AdminAuthenticating description="Verifying your administrator access. You’ll be taken to your workspace automatically." />;
   }
 
   return <VerifiedAdminContext.Provider value={true}>{children}</VerifiedAdminContext.Provider>;

@@ -32,3 +32,7 @@
 @keyframes entryReveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @media(max-width:600px) { .page { padding: 44px 24px; } .eyebrow { margin-bottom: 18px; font-size: 10px; } .description { font-size: 14px; margin-top: 20px; } .desktopBreak { display: none; } .websites { width: 100%; max-width: 310px; flex-direction: column; gap: 8px; margin-top: 26px; } .websiteChoice { width: 100%; gap: 14px; } .websiteArrow { margin-left: auto; } .steps { grid-template-columns: minmax(0,1fr); gap: 18px; margin-top: 28px; padding-top: 24px; max-width: 340px; } .steps li { gap: 14px; } .steps p { margin-top: 3px; } .localEntry { margin-top: 24px; } }
 @media(prefers-reduced-motion:reduce) { .message *, .message *::after { animation: none !important; transition: none !important; } }
+
+/* Entry verification previews the application layout at full width. */
+.page:has([data-application-loading]) { padding: 0; }
+.message:has([data-application-loading]) { max-width: none; text-align: initial; }
