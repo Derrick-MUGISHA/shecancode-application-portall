@@ -19,10 +19,7 @@ function Bones({ name, height, bones }: { name: string; height: number; bones: R
 }
 
 export function ApplicationEntrySkeleton() {
-  return <div className={`${styles.loading} ${styles.entry}`} role="status" aria-busy="true">
-    <h1 className="text-2xl font-semibold text-slate-800">Opening your application…</h1>
-    <p className="mt-3 text-sm text-slate-600">Checking your entry link and available programs. Please wait.</p>
-  </div>
+  return <ApplicationPageSkeleton />
 }
 
 export function ApplicationProgressSkeleton() {
@@ -65,7 +62,9 @@ export function ApplicationFormSkeleton({ step = 0 }: { step?: number }) {
 }
 
 export function ApplicationPageSkeleton() {
-  return <ApplicationShell><div role="status" aria-busy="true" className={wizard.emptyState}>
-    <h2>Checking available programs…</h2><p>Please wait while we prepare your application.</p>
-  </div></ApplicationShell>
+  return <div data-application-loading>
+    <ApplicationShell sidebar={<ApplicationProgressSkeleton />}>
+      <ApplicationFormSkeleton />
+    </ApplicationShell>
+  </div>
 }

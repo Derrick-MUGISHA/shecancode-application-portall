@@ -21,8 +21,8 @@ import { selectedAvailability, availableProgram } from "@/lib/cohorts"
 import { formSchema } from "@/lib/form-schema"
 import { acceptingApplications, programClock } from "@/lib/program-availability"
 import { APPLICATION_STEPS, applicationStepSchemas, applicationStepForField } from "@/lib/application-steps"
-import ApplicationReview from "./application-review"
 import { ApplicationFormSkeleton, ApplicationProgressSkeleton } from "./application-skeletons"
+import ApplicationReview from "./application-review"
 import styles from "./application-wizard.module.css"
 import CourseSelection, { type Course } from "@/components/form-sections/course-selection"
 import PersonalInformation from "@/components/form-sections/personal-information"
@@ -393,11 +393,10 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
         </nav>
   )
 
-  if (courseLoading || (hasOpenPrograms && !draftReady)) return <div className={styles.emptyState} role="status" aria-busy="true">
-    <Loader2 size={24} className="animate-spin" aria-hidden="true" />
-    <h2>Checking available programs…</h2>
-    <p>Please wait while we prepare your application.</p>
-  </div>
+  if (courseLoading || (hasOpenPrograms && !draftReady)) return <>
+    {navigationHost && createPortal(<ApplicationProgressSkeleton />, navigationHost)}
+    <ApplicationFormSkeleton step={initialStep ?? 0} />
+  </>
 
   if (courseError && !hasOpenPrograms) return <div className={styles.emptyState} role="alert">
     <h2>Programs could not be loaded</h2><p>{courseError}</p>

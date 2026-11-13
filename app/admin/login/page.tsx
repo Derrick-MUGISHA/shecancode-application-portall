@@ -2,7 +2,10 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { adminApplicationsOptions } from "@/hooks/use-admin-applications";
+import { adminProgramsOptions } from "@/hooks/use-admin-programs";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -10,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import AdminAuthenticating from "@/components/admin/admin-authenticating";
 import { LockIcon, AlertCircleIcon } from "lucide-react";
 
 export default function AdminLogin() {
@@ -18,6 +22,11 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    router.prefetch("/admin/applications");
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,15 +42,18 @@ export default function AdminLogin() {
       const user = userCredential.user;
 
       const idToken = await user.getIdTokenResult();
-      console.log("ID Token Claims:", idToken.claims);
 
       if (
         typeof idToken.claims.email === "string" &&
         idToken.claims.email.includes("igirerwanda")
       ) {
-        // Set a secure HTTP-only cookie
         document.cookie = `adminSession=true; path=/; secure; samesite=strict`;
-        router.push("/admin/applications");
+        // Share these in-flight reads with the destination page. Navigation and
+        // session verification proceed while the dashboard data is loading.
+        void queryClient.prefetchQuery(adminApplicationsOptions(queryClient));
+        void queryClient.prefetchQuery(adminProgramsOptions());
+        router.replace("/admin/applications");
+        return;
       } else {
         await auth.signOut();
         setError("You don't have permission to access the admin area.");
@@ -49,10 +61,11 @@ export default function AdminLogin() {
     } catch (error) {
       setError("Failed to log in. Please check your credentials.");
       console.error(error);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
+
+  if (loading) return <AdminAuthenticating description="Signing you in and preparing your admissions workspace." />;
 
   return (
     <div className="flex min-h-screen items-center justify-center">

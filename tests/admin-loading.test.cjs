@@ -72,11 +72,31 @@ test('participant skeletons render during entry, draft restoration, program and 
       const html = renderToStaticMarkup(React.createElement(components[name], props))
       assert.match(html, /role="status"/)
       assert.match(html, /aria-busy="true"/)
-      if (name === 'ApplicationEntrySkeleton' || name === 'ApplicationPageSkeleton') {
-        assert.match(html, /Opening your application|Checking available programs/)
-        assert.doesNotMatch(html, /<i style="left:|Application progress|STEP 1/)
-      } else assert.match(html, /<i style="left:/, `${name} must show placeholders before hydration`)
+      assert.match(html, /<i style="left:/, `${name} must show the upcoming layout before hydration`)
+      assert.doesNotMatch(html, /Authenticating/)
       assert.doesNotMatch(html, /<input|type="submit"|mailto:|tel:/)
     }
   } finally { console.error = previousError }
+})
+
+
+test('admin authentication shows only its status, without a logo or background skeleton', () => {
+  const Screen = load('components/authenticating-screen.tsx', {})
+  const Overlay = load('components/admin/admin-authenticating.tsx', {
+    '../authenticating-screen': Screen,
+  })
+  const { default: Protected } = load('components/AdminProtectedRoute.tsx', {
+    './admin/admin-authenticating': Overlay,
+    '@tanstack/react-query': { useQueryClient: () => ({}) },
+    'next/navigation': { useRouter: () => ({}) },
+    'firebase/auth': { onAuthStateChanged() {} }, '@/lib/firebase': { auth: {} },
+  })
+  const previousError = console.error
+  console.error = (...args) => { if (!String(args[0]).includes('useLayoutEffect does nothing on the server')) previousError(...args) }
+  let html
+  try { html = renderToStaticMarkup(React.createElement(Protected, null, React.createElement('p', null, 'private workspace'))) }
+  finally { console.error = previousError }
+  assert.match(html, /Authenticating…/)
+  assert.match(html, /Verifying your administrator access/)
+  assert.doesNotMatch(html, /private workspace|<img|<i style="left:|overlay|admin-navigation/)
 })

@@ -92,6 +92,7 @@ test('empty and unavailable program lists render no form, steps, or Continue but
   const noop = () => null
   const stubs = {
     'next/navigation': { useRouter: () => ({ prefetch() {} }) },
+    './application-skeletons': { ApplicationFormSkeleton: noop, ApplicationProgressSkeleton: noop },
     '@/components/ui/button': { Button: noop }, '@/components/ui/form': { Form: noop },
     '@/components/ui/use-toast': { toast() {} }, '@/components/ui/card': { Card: noop, CardContent: noop },
   }
