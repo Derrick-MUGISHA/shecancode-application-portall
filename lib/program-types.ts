@@ -1,4 +1,5 @@
 export type CohortOption = {
+  displayOrder?: number | null
   createdAt?: string
   id: string
   number: number
@@ -11,6 +12,7 @@ export type CohortOption = {
 }
 
 export type Program = {
+  displayOrder?: number | null
   createdAt?: string
   requiresCohort?: boolean
   cohorts?: CohortOption[]

@@ -6,14 +6,14 @@ import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, type FieldErrors } from "react-hook-form"
 import type { z } from "zod"
-import { Loader2, ArrowLeft, ArrowRight, Check, ShieldCheck } from "lucide-react"
+import { Loader2, ArrowLeft, ArrowRight, Check, ShieldCheck, BookOpen, ArrowUpRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Form } from "@/components/ui/form"
 import { toast } from "@/components/ui/use-toast"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatPhoneNumber } from "@/lib/phone"
-import { DRAFT_STORAGE_KEY, PROGRAM_STORAGE_KEY, encodeDraft, decodeDraft, encodeProgramCache, decodeProgramCache } from "@/lib/application-storage"
+import { DRAFT_STORAGE_KEY, encodeDraft, decodeDraft } from "@/lib/application-storage"
 import { loadDraftAttachment, saveDraftAttachment } from "@/lib/draft-attachment"
 import { validateEducationFile } from "@/lib/education-document"
 import { restoredApplicationStep } from "@/lib/application-progress"
@@ -37,6 +37,7 @@ type FormValues = z.infer<typeof formSchema>
 
 export default function ApplicationForm({ initialPrograms, initialStep }: { initialPrograms?: Course[]; initialStep?: number }) {
   const router = useRouter()
+  const [now, setNow] = useState(Date.now())
   const [step, setStep] = useState(0)
   const [courseLoading, setCourseLoading] = useState(initialPrograms === undefined)
   const [navigationHost, setNavigationHost] = useState<HTMLElement | null>(null)
@@ -64,7 +65,6 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
     const received = programs.map(program => ({ ...program, clientReceivedAt: Date.now() }))
     setCourses(received)
     lastProgramFetch.current = Date.now()
-    try { localStorage.setItem(PROGRAM_STORAGE_KEY, encodeProgramCache(received)) } catch { /* Cache is optional. */ }
   }, [])
 
   const fetchCourses = useCallback((showLoading = true): Promise<void> => {
@@ -72,7 +72,7 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
     const request = (async () => {
       if (showLoading) { setCourseLoading(true); setCourseError(null) }
       try {
-        const response = await fetch("/api/courses?open=true", { signal: AbortSignal.timeout(60000), cache: "no-store" })
+        const response = await fetch("/api/courses?open=true", { signal: AbortSignal.timeout(10000), cache: "no-store" })
         if (!response.ok) throw new Error("Unable to load programs")
         storePrograms(await response.json())
         setCourseError(null)
@@ -92,26 +92,13 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
     if (initialPrograms !== undefined) {
       storePrograms(initialPrograms)
       setCourseLoading(false)
-      void fetchCourses(false)
     } else {
-      let cached = null
-      try {
-        const raw = localStorage.getItem(PROGRAM_STORAGE_KEY)
-        cached = raw ? decodeProgramCache(raw) : null
-      } catch { /* Recover by loading live programs. */ }
-      if (cached) {
-        setCourses(cached.programs)
-        if (cached.fresh) lastProgramFetch.current = Date.now()
-        setCourseLoading(false)
-        if (!cached.fresh) void fetchCourses(false)
-      } else {
-        void fetchCourses()
-      }
+      void fetchCourses()
     }
     const refresh = () => {
-      if (document.visibilityState === "visible" && Date.now() - lastProgramFetch.current >= 5000) void fetchCourses(false)
+      if (document.visibilityState === "visible" && Date.now() - lastProgramFetch.current >= 2000) void fetchCourses(false)
     }
-    const interval = setInterval(refresh, 5000)
+    const interval = setInterval(() => { setNow(Date.now()); refresh() }, 2000)
     window.addEventListener("focus", refresh)
     document.addEventListener("visibilitychange", refresh)
     return () => { clearInterval(interval); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh) }
@@ -153,6 +140,7 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
 
   // Handle form submission
   async function onSubmit(data: FormValues) {
+    if (!selectionAvailable) { setStep(0); void fetchCourses(); return }
     setIsSubmitting(true)
     try {
       const { educationDocument, ...applicationData } = data
@@ -374,6 +362,18 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
   const selectedCohortLabel = selectedCohort?.cohortLabel || selectedProgram?.cohortLabel
   const currentStep = APPLICATION_STEPS[step]
 
+  const hasOpenPrograms = courses.some(course => availableProgram(course, programClock(course, now)))
+  const selectionAvailable = selectedProgram && availableProgram(selectedProgram, programClock(selectedProgram, now)) &&
+    (!selectedProgram.cohorts?.length || acceptingApplications(selectedAvailability(selectedProgram, values.cohortId) || { isOpen: false }, programClock(selectedProgram, now)))
+
+  useEffect(() => {
+    if (courseLoading || courseError || !draftReady || !values.courseId || selectionAvailable) return
+    form.setValue("courseId", "", { shouldDirty: true })
+    form.setValue("cohortId", "", { shouldDirty: true })
+    setStep(0)
+    setStepError("Your selected program or cohort is no longer available. Please choose an open program.")
+  }, [courseLoading, courseError, draftReady, selectionAvailable, values.courseId, form])
+
   const navigation = (
         <nav ref={progressStart} aria-label="Application progress" className={styles.progressNav}>
           <p className={styles.sidebarHeading}>YOUR APPLICATION</p>
@@ -393,10 +393,23 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
         </nav>
   )
 
-  if (!draftReady) return <>
-    {navigationHost && createPortal(<ApplicationProgressSkeleton />, navigationHost)}
-    <ApplicationFormSkeleton step={initialStep ?? 0} />
-  </>
+  if (courseLoading || (hasOpenPrograms && !draftReady)) return <div className={styles.emptyState} role="status" aria-busy="true">
+    <Loader2 size={24} className="animate-spin" aria-hidden="true" />
+    <h2>Checking available programs…</h2>
+    <p>Please wait while we prepare your application.</p>
+  </div>
+
+  if (courseError && !hasOpenPrograms) return <div className={styles.emptyState} role="alert">
+    <h2>Programs could not be loaded</h2><p>{courseError}</p>
+    <button type="button" onClick={() => void fetchCourses()} className={styles.textButton}>Try again</button>
+  </div>
+
+  if (!hasOpenPrograms) return <div className={styles.emptyState} role="status">
+    <BookOpen size={32} aria-hidden="true" />
+    <h2>No programs available</h2>
+    <p>Applications are currently closed. Please check back when a new program or cohort opens.</p>
+    <a href="https://www.shecancodeschool.org/" className={styles.textButton}>Visit SheCanCode <ArrowUpRight size={15} aria-hidden="true" /></a>
+  </div>
 
   return (
     <>
@@ -440,7 +453,7 @@ export default function ApplicationForm({ initialPrograms, initialStep }: { init
             <div className={styles.navigation}>
               {step > 0 ? <Button type="button" variant="outline" onClick={() => goToStep(step - 1)} disabled={isSubmitting}><ArrowLeft size={16} className="mr-2" aria-hidden="true" />Back</Button> : <span />}
               {step < 3 ? (
-                <Button key="continue" type="button" onClick={continueStep} disabled={step === 0 && (courseLoading || !!courseError || !courses.length)}>
+                <Button key="continue" type="button" onClick={continueStep} disabled={step === 0 && (courseLoading || !!courseError || !hasOpenPrograms)}>
                   Continue <ArrowRight size={16} className="ml-2" aria-hidden="true" />
                 </Button>
               ) : (

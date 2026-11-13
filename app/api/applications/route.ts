@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import prisma from "@/lib/prisma"
-import { revalidateTag } from "next/cache"
-import { PROGRAM_CACHE_TAG } from "@/lib/program-data"
+import { invalidatePrograms } from "@/lib/program-data"
 import { formSchema } from "@/lib/form-schema"
 import { validateRwandaAddress } from "@/lib/rwanda-locations"
 import { createApplicationWithAvailability, ProgramUnavailableError, EntrySessionUnavailableError } from "@/lib/create-application"
@@ -129,7 +128,7 @@ export async function POST(request: Request) {
         cohortId: body.cohortId || undefined,
     })
 
-    revalidateTag(PROGRAM_CACHE_TAG, { expire: 0 })
+    invalidatePrograms()
     const response=NextResponse.json({ id: application.id }, { status: 201 })
     response.cookies.set(ENTRY_COOKIE,"",{...entryCookieOptions(),maxAge:0})
     return response
