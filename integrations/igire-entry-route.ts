@@ -1,7 +1,7 @@
 // Copy to the Igire website's src/app/api/application-entry/route.ts.
 // Only this server route receives the shared secret; never import it into a client component.
 import {NextResponse} from "next/server"
-const sources:Record<string,string>={"advanced-java-backend-development":"igire-backend","advanced-frontend-development":"igire-frontend","web-fundamentals":"igire-fundamentals"}
+const sources:Record<string,string>={"inclusive-futures":"igire-codebridge","advanced-java-backend-development":"igire-backend","advanced-frontend-development":"igire-frontend","web-fundamentals":"igire-fundamentals"}
 export const dynamic="force-dynamic"
 async function enterProgram(program:unknown){
   const headers={"Cache-Control":"private, no-store","Referrer-Policy":"no-referrer"}

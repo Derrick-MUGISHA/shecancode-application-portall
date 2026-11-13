@@ -1,4 +1,5 @@
 export const ENTRY_SOURCES = {
+  "igire-codebridge": {label:"Igire Rwanda · CodeBridge Program",url:"https://www.igirerwanda.org/programs/inclusive-futures",secretEnv:"IGIRE_APPLICATION_ENTRY_SECRET"},
   "igire-backend": {label:"Igire Rwanda · Advanced Java Backend Development",url:"https://www.igirerwanda.org/programs/advanced-java-backend-development",secretEnv:"IGIRE_APPLICATION_ENTRY_SECRET"},
   "igire-frontend": {label:"Igire Rwanda · Advanced Frontend Development",url:"https://www.igirerwanda.org/programs/advanced-frontend-development",secretEnv:"IGIRE_APPLICATION_ENTRY_SECRET"},
   "igire-fundamentals": {label:"Igire Rwanda · Web Fundamentals",url:"https://www.igirerwanda.org/programs/web-fundamentals",secretEnv:"IGIRE_APPLICATION_ENTRY_SECRET"},
