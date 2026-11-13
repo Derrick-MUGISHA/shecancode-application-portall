@@ -5,6 +5,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Arrow as PopoverArrow } from "@radix-ui/react-popover";
 import {
   filterAdminApplications,
@@ -64,7 +65,6 @@ import {
   UsersRound,
 } from "lucide-react";
 import { updateApplicationStatuses } from "@/lib/actions";
-import { generateDownloadExcel } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
 import type {
@@ -129,6 +129,8 @@ export default function ApplicationList({
   initialFilters: Partial<AdminFilters> & { page?: number; pageSize?: number };
 }) {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const [exporting, setExporting] = useState(false);
   const applicationQuery = useAdminApplications(initialData);
   const applications =
     applicationQuery.data?.applications ?? EMPTY_APPLICATIONS;
@@ -324,6 +326,24 @@ export default function ApplicationList({
     applicationQuery.dataUpdatedAt,
     applicationQuery.isFetching,
   ]);
+  const exportFiltered = async () => {
+    if (exporting || !filtered.length) return;
+    setExporting(true);
+    try {
+      if (!auth.currentUser) throw new Error("Sign in to export applications.");
+      const token = await auth.currentUser.getIdToken();
+      const response = await fetch("/api/admin/applications/export", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ids: filtered.map(row => row.id) }), cache: "no-store",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || "Unable to export applications.");
+      const { generateDownloadExcel } = await import("@/lib/utils");
+      await generateDownloadExcel(result.applications, filters.status);
+    } catch (error) {
+      toast({ title: "Export failed", description: error instanceof Error ? error.message : "Unable to export applications.", variant: "destructive" });
+    } finally { setExporting(false); }
+  };
   const openSelectionOptions = () => {
     setBulkStatus("");
     setBulkError("");
@@ -725,11 +745,11 @@ export default function ApplicationList({
           </div>
           <Button
             variant="outline"
-            disabled={!filtered.length}
-            onClick={() => generateDownloadExcel(filtered, filters.status)}
+            disabled={!filtered.length || exporting}
+            onClick={() => void exportFiltered()}
           >
-            <Download size={15} className="mr-2" />
-            Export filtered results
+            {exporting ? <Loader2 size={15} className="mr-2 animate-spin" /> : <Download size={15} className="mr-2" />}
+            {exporting ? "Exporting…" : "Export filtered results"}
           </Button>
         </div>
         {selectedApplicationIds.length > 0 && (
@@ -978,7 +998,9 @@ export default function ApplicationList({
                       >
                         <Link
                           href={`/admin/applications/${row.id}?from=${encodeURIComponent(listHref)}`}
-                          prefetch={true}
+                          prefetch={false}
+                          onMouseEnter={() => router.prefetch(`/admin/applications/${row.id}?from=${encodeURIComponent(listHref)}`)}
+                          onFocus={() => router.prefetch(`/admin/applications/${row.id}?from=${encodeURIComponent(listHref)}`)}
                         >
                           View
                           <ArrowUpRight size={14} className="ml-1" />

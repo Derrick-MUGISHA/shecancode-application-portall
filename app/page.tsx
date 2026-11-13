@@ -1,10 +1,16 @@
+import { cookies } from "next/headers";
+import { ENTRY_COOKIE } from "@/lib/entry-token";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Sparkles } from "lucide-react";
 import styles from "./home.module.css";
 import ArcticBackdrop from "@/components/arctic-backdrop";
 
-export default function Home() {
+export default async function Home() {
+  // The application page still verifies this session. A new visitor goes straight
+  // to the program websites instead of following /apply only to be redirected.
+  const hasEntry = Boolean((await cookies()).get(ENTRY_COOKIE)?.value);
+  const applicationHref = hasEntry ? "/apply" : "/entry/required";
   return (
     <div className={styles.page}>
       <div className={styles.aura}>
@@ -32,8 +38,8 @@ export default function Home() {
               {/* <span>We can’t wait to meet you.</span> */}
             </p>
             <div className={styles.actions}>
-              <Link href="/apply" prefetch={true} className={styles.applyLink}>
-                Start your application
+              <Link href={applicationHref} prefetch={true} className={styles.applyLink}>
+                {hasEntry ? "Continue your application" : "Explore programs"}
                 <span className={styles.buttonIcon}>
                   <ArrowRight size={19} aria-hidden="true" />
                 </span>

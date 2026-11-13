@@ -1,0 +1,11 @@
+.page { display: grid; place-items: center; min-height: 100svh; padding: 24px; background: #fff; }
+.form { width: min(100%, 448px); padding: 32px; border-radius: 8px; box-shadow: 0 10px 25px #193f6010; }
+.form > div, .field > div { background: #e2eaf2; border-radius: 6px; animation: pulse 1.5s ease-in-out infinite; }
+.form .icon { width: 48px; height: 48px; margin: 0 auto 24px; border-radius: 50%; }
+.title { width: 65%; height: 30px; margin: 0 auto 12px; }
+.subtitle { width: 90%; height: 14px; margin: 0 auto 32px; }
+.form .field { margin: 24px 0; background: transparent; animation: none; }
+.label { width: 30%; height: 14px; margin-bottom: 8px; }
+.input, .button { width: 100%; height: 40px; }
+@keyframes pulse { 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .form > div, .field > div { animation: none; } }

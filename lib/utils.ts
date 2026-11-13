@@ -1,14 +1,15 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { kigaliDay } from "@/lib/admin-applications"
-import * as xlsx from "xlsx"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function generateDownloadExcel(applications, statusFilter) {
-  const excelData = applications.map((app) => ({
+export async function generateDownloadExcel(applications: Record<string, any>[], statusFilter: string) {
+  if (!applications.length) return
+  const xlsx = await import("xlsx")
+  const excelData: Record<string, unknown>[] = applications.map((app) => ({
     "Entry Website": app.entrySourceDomain || "",
     "Entry Program Page": app.entrySourceUrl || "",
     "Entry Link Issued": app.entryIssuedAt ? new Date(app.entryIssuedAt) : null,
@@ -56,7 +57,7 @@ export function generateDownloadExcel(applications, statusFilter) {
     "Decision Date": app.decisionDate ? new Date(app.decisionDate) : null,
     "Technical Interview Marks": app.technicalInterviewMarks,
     "Course Name": app.course?.name ?? "",
-    Cohort: app.cohortLabel || app.course?.cohortLabel || "",
+    Cohort: app.cohort ? `cohort-${app.cohort.number}` : app.cohortLabel || app.course?.cohortLabel || "",
   }))
 
   const ws = xlsx.utils.json_to_sheet(excelData)
@@ -71,7 +72,7 @@ export function generateDownloadExcel(applications, statusFilter) {
   ws["!cols"] = colWidths
 
   const longTextFields = ["Motivation", "Additional Feedback", "Reviewer Comments", "Disability Details"]
-  const range = xlsx.utils.decode_range(ws["!ref"])
+  const range = xlsx.utils.decode_range(ws["!ref"] || "A1")
   for (let row = range.s.r + 1; row <= range.e.r; row++) {
     for (let col = range.s.c; col <= range.e.c; col++) {
       const cellAddress = xlsx.utils.encode_cell({ r: row, c: col })

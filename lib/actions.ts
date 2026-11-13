@@ -2,6 +2,7 @@
 
 import { z } from "zod"
 import prisma from "@/lib/prisma"
+import { readAdminApplicationRows } from "@/lib/admin-application-data"
 import { revalidatePath } from "next/cache"
 import nodemailer from "nodemailer";
 
@@ -249,16 +250,7 @@ export async function getApplicants() {
 // New action to fetch applications and statistics
 export async function fetchApplications() {
   try {
-    // Fetch all applications with course data
-    const applications = await prisma.application.findMany({
-      include: {
-        course: {
-          select: { id: true, name: true, cohortLabel: true, isOpen: true },
-        },
-        cohort: { select: {id:true,number:true,isOpen:true,capacity:true,closesAt:true,_count:{select:{applications:true}}} },
-
-      },
-    })
+    const applications = await readAdminApplicationRows()
 
     // Compute statistics
     const totalApplicants = applications.length

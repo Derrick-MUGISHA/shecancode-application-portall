@@ -80,15 +80,16 @@ test('participant skeletons render during entry, draft restoration, program and 
 })
 
 
-test('admin authentication shows only its status, without a logo or background skeleton', () => {
-  const Screen = load('components/authenticating-screen.tsx', {})
-  const Overlay = load('components/admin/admin-authenticating.tsx', {
-    '../authenticating-screen': Screen,
+test('dashboard reload checks show the admin skeleton instead of participant content or login authentication', async () => {
+  const boneyard = await import('boneyard-js/react')
+  const skeletons = load('components/admin/admin-skeletons.tsx', {
+    'boneyard-js/react': boneyard, 'next/navigation': { usePathname: () => '/admin/courses' },
   })
   const { default: Protected } = load('components/AdminProtectedRoute.tsx', {
-    './admin/admin-authenticating': Overlay,
+    './admin/admin-skeletons': skeletons,
+    '@/hooks/use-admin-applications': {}, '@/hooks/use-admin-programs': {},
     '@tanstack/react-query': { useQueryClient: () => ({}) },
-    'next/navigation': { useRouter: () => ({}) },
+    'next/navigation': { useRouter: () => ({}), usePathname: () => '/admin/courses' },
     'firebase/auth': { onAuthStateChanged() {} }, '@/lib/firebase': { auth: {} },
   })
   const previousError = console.error
@@ -96,7 +97,21 @@ test('admin authentication shows only its status, without a logo or background s
   let html
   try { html = renderToStaticMarkup(React.createElement(Protected, null, React.createElement('p', null, 'private workspace'))) }
   finally { console.error = previousError }
+  assert.match(html, /<i style="left:/)
+  assert.doesNotMatch(html, /private workspace|Authenticating|Application Form/)
+})
+
+test('login authentication remains a plain status without logos or skeletons', () => {
+  const Screen = load('components/authenticating-screen.tsx', {})
+  const Auth = load('components/admin/admin-authenticating.tsx', { '../authenticating-screen': Screen }).default
+  const html = renderToStaticMarkup(React.createElement(Auth))
   assert.match(html, /Authenticating…/)
-  assert.match(html, /Verifying your administrator access/)
-  assert.doesNotMatch(html, /private workspace|<img|<i style="left:|overlay|admin-navigation/)
+  assert.doesNotMatch(html, /<img|<i style="left:|admin-navigation/)
+})
+
+test('login route fallback previews the sign-in form instead of the participant form', () => {
+  const LoginLoading = load('app/admin/login/loading.tsx', {}).default
+  const html = renderToStaticMarkup(React.createElement(LoginLoading))
+  assert.match(html, /Loading administrator sign-in/)
+  assert.doesNotMatch(html, /Application Form|admin-navigation|Authenticating/)
 })

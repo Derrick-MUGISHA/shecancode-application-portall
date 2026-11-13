@@ -364,7 +364,7 @@ test("development Prisma cache replaces clients from an older generated schema",
 
 test("development startup regenerates Prisma before starting Next", () => {
   const scripts = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).scripts
-  assert.equal(scripts.dev, "prisma generate && next dev")
+  assert.match(scripts.dev, /(?:^|&&)\s*prisma generate\s*&&\s*next dev\s*$/)
 })
 
 
