@@ -82,6 +82,7 @@ enum ApplicationStatus {
 }
 
 model Course {
+  displayOrder Float?
   requiresCohort Boolean @default(false)
   isOpen Boolean @default(true)
   cohortLabel String?
@@ -193,6 +194,7 @@ model EducationDocument {
 
 
 model Cohort {
+  displayOrder Float?
   id String @id @default(auto()) @map("_id") @db.ObjectId
   courseId String @db.ObjectId
   course Course @relation(fields: [courseId], references: [id])

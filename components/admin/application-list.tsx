@@ -978,6 +978,7 @@ export default function ApplicationList({
                       >
                         <Link
                           href={`/admin/applications/${row.id}?from=${encodeURIComponent(listHref)}`}
+                          prefetch={true}
                         >
                           View
                           <ArrowUpRight size={14} className="ml-1" />

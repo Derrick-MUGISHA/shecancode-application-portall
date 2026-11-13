@@ -100,3 +100,8 @@
 /* The introduction shares the same uninterrupted Arctic Frost background. */
 .top { margin: -24px calc(-1 * clamp(16px, 4vw, 48px)) 36px; padding: 24px clamp(16px, 4vw, 48px) 12px; }
 .top .intro { margin-bottom: 0; }
+
+/* Empty and loading states have no application navigation. */
+.stepSidebar:empty { display: none; }
+.applicationLayout:has(> .stepSidebar:empty) { grid-template-columns: minmax(0, 880px); justify-content: center; }
+.applicationLayout:has(> .stepSidebar:empty) > .panel { grid-column: 1; }

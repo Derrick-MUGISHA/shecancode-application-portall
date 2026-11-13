@@ -72,7 +72,10 @@ test('participant skeletons render during entry, draft restoration, program and 
       const html = renderToStaticMarkup(React.createElement(components[name], props))
       assert.match(html, /role="status"/)
       assert.match(html, /aria-busy="true"/)
-      assert.match(html, /<i style="left:/, `${name} must show placeholders before hydration`)
+      if (name === 'ApplicationEntrySkeleton' || name === 'ApplicationPageSkeleton') {
+        assert.match(html, /Opening your application|Checking available programs/)
+        assert.doesNotMatch(html, /<i style="left:|Application progress|STEP 1/)
+      } else assert.match(html, /<i style="left:/, `${name} must show placeholders before hydration`)
       assert.doesNotMatch(html, /<input|type="submit"|mailto:|tel:/)
     }
   } finally { console.error = previousError }
