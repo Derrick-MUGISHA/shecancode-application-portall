@@ -43,7 +43,8 @@ export default function ApplicationDetails({ application: initialApplication, em
     const from = new URLSearchParams(window.location.search).get("from")
     setBackHref(applicationReturnHref(from))
     setTab(new URLSearchParams(window.location.search).get("tab") === "review" ? "review" : "details")
-  }, [])
+    window.scrollTo({ top: 0, behavior: "instant" })
+  }, [initialApplication.id])
 
   const refresh=useCallback(async(manual=false)=>{
       if(editing||tab!=="details"||refreshRequest.current||(!manual&&(document.visibilityState!=="visible"||Date.now()-lastRefresh.current<30000)))return
